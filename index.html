@@ -12,7 +12,7 @@
     <style>
         body { font-family: 'Noto Sans JP', 'Inter', sans-serif; }
         
-        /* A3横1ページに完全に収めるための印刷スタイル (余白なし・用紙いっぱいに最大化) */
+        /* A3横1ページに完全に収めるための印刷スタイル (余白なし・用紙いっぱいに最大化・右切れ防止) */
         @media print {
             @page {
                 size: A3 landscape;
@@ -40,7 +40,7 @@
                 background: white !important;
                 display: flex !important;
                 align-items: center !important;
-                justify-content: center !important;
+                justify-content: flex-start !important;
                 padding: 0 !important;
                 margin: 0 !important;
                 z-index: 9999 !important;
@@ -62,7 +62,7 @@
                 overflow: hidden !important;
                 display: flex !important;
                 align-items: center !important;
-                justify-content: center !important;
+                justify-content: flex-start !important;
                 width: 420mm !important;
                 height: 297mm !important;
             }
@@ -71,8 +71,8 @@
                 height: 293mm !important;
                 box-shadow: none !important;
                 border: none !important;
-                padding: 3mm !important;
-                margin: auto !important;
+                padding: 2mm !important;
+                margin: 0 !important;
                 page-break-after: avoid !important;
                 page-break-before: avoid !important;
                 page-break-inside: avoid !important;
@@ -398,7 +398,7 @@
                     <button onclick="backToStep4()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-5 py-2.5 rounded-lg text-sm transition border border-slate-300">
                         ← 材料取図一覧に戻る
                     </button>
-                    <button onclick="goToStep6()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg transition flex items-center gap-2 text-base">
+                    <button onclick="goToStep6()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3 rounded-lg shadow-lg transition flex items-center gap-2 text-base">
                         🖨️ PDF出力画面へ進む ➔
                     </button>
                 </div>
@@ -420,10 +420,10 @@
                 </div>
 
                 <div class="flex items-center gap-4 pt-2">
-                    <button onclick="openPdfLayoutModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg transition flex items-center gap-2 text-base">
+                    <button onclick="openPdfLayoutModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-8 py-3 rounded-lg shadow-lg transition flex items-center gap-2 text-base">
                         👁️ PDFレイアウトの確認
                     </button>
-                    <button onclick="downloadPdfLayout()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg transition flex items-center gap-2 text-base">
+                    <button onclick="downloadPdfLayout()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3 rounded-lg shadow-lg transition flex items-center gap-2 text-base">
                         📥 PDFを保存 (ダウンロード)
                     </button>
                 </div>
@@ -438,56 +438,56 @@
 
     </main>
 
-    <!-- A3横 2段レイアウト PDFプレビュー確認モーダル (メディア10の寸法比率に完全準拠・1ページ最大化) -->
+    <!-- A3横 2段レイアウト PDFプレビュー確認モーダル (メディア10の寸法比率完全準拠・スクロール完全対応・右切れ防止) -->
     <div id="pdf-layout-modal" class="fixed inset-0 bg-black/70 hidden flex items-center justify-center p-2 z-50 overflow-auto">
-        <div class="bg-white rounded-2xl w-full max-w-[1400px] max-h-[98vh] flex flex-col shadow-2xl overflow-hidden">
-            <div class="bg-slate-800 text-white px-6 py-3 flex justify-between items-center print:hidden">
+        <div class="bg-white rounded-2xl w-full max-w-[1450px] max-h-[96vh] flex flex-col shadow-2xl overflow-hidden my-auto">
+            <div class="bg-slate-800 text-white px-6 py-2.5 flex justify-between items-center print:hidden shrink-0">
                 <div class="flex items-center gap-3">
                     <span class="text-xl">📄</span>
-                    <h3 class="font-bold text-base">A3横 2段レイアウト PDF確認 (設計図18x15cm・部品表12cm・材料取図9x9cm4枚・コメント18x5cm)</h3>
+                    <h3 class="font-bold text-sm">A3横 2段レイアウト確認 (等角図18x15cm・部品表12cm・材料取図4枚9x9cm・コメント18x5cm)</h3>
                 </div>
                 <div class="flex items-center gap-3">
-                    <button onclick="downloadPdfLayout()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs transition">📥 PDFを保存 (ダウンロード)</button>
-                    <button onclick="closePdfLayoutModal()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-4 py-2 rounded-lg text-xs transition">✕ 閉じる</button>
+                    <button onclick="downloadPdfLayout()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-1.5 rounded-lg text-xs transition">📥 PDFを保存 (ダウンロード)</button>
+                    <button onclick="closePdfLayoutModal()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-4 py-1.5 rounded-lg text-xs transition">✕ 閉じる</button>
                 </div>
             </div>
 
             <!-- A3横見立てプレビューシート (A3比率 420mm × 297mm ≒ 1260px × 890px) -->
-            <div id="pdf-preview-sheet" class="flex-1 overflow-auto p-4 bg-slate-200 flex justify-center items-center">
-                <div class="bg-white w-[1260px] h-[890px] shadow-2xl p-5 flex flex-col justify-between text-slate-800 relative border border-slate-300 box-border shrink-0">
+            <div id="pdf-preview-sheet" class="flex-1 overflow-auto p-2 bg-slate-200 flex justify-center items-center">
+                <div class="bg-white w-[1260px] h-[890px] shadow-2xl p-4 flex flex-col justify-between text-slate-800 relative border border-slate-300 box-border shrink-0 m-auto">
                     
-                    <!-- 2カラム全体レイアウト (メディア10の寸法比率に完全準拠) -->
-                    <div class="grid grid-cols-2 gap-6 h-full flex-1">
+                    <!-- 2カラム全体レイアウト (メディア10の配置・寸法に完全準拠) -->
+                    <div class="grid grid-cols-2 gap-4 h-full flex-1 overflow-hidden box-border">
                         
                         <!-- ================= 左側カラム (幅 18cm 相当 / 600px) ================= -->
-                        <div class="flex flex-col justify-between h-full border-r border-slate-400 pr-5">
+                        <div class="flex flex-col gap-2 justify-between h-full border-r border-slate-400 pr-3 box-border">
                             
-                            <!-- ヘッダータイトル行 -->
-                            <div class="flex justify-between items-end border-b-2 border-slate-900 pb-1 shrink-0">
-                                <h1 class="text-base font-bold text-slate-950 tracking-wider">設計図 &nbsp;&nbsp; 構想図（等角図）</h1>
-                                <div class="text-[10px] font-semibold text-slate-700 flex gap-4">
-                                    <span>作成日: ____年____月____日</span>
-                                    <span>名前: __________________</span>
+                            <!-- 左上：等角図 (幅18cm × 高さ15cm 相当 / 450px) -->
+                            <div class="flex flex-col gap-0.5 shrink-0">
+                                <div class="flex justify-between items-end border-b-2 border-slate-800 pb-0.5">
+                                    <h1 class="text-sm font-bold text-slate-950 tracking-wider">設計図 &nbsp;&nbsp; 構想図（等角図）</h1>
+                                    <div class="text-[9.5px] font-semibold text-slate-700 flex gap-2">
+                                        <span>作成日: ____年____月____日</span>
+                                        <span>名前: __________________</span>
+                                    </div>
+                                </div>
+                                <div class="bg-white rounded-xl p-0.5 flex flex-col items-center justify-center relative overflow-hidden border border-slate-400 shadow-inner h-[450px] box-border">
+                                    <div id="pdf-isometric-canvas-container" class="w-full h-full flex items-center justify-center overflow-hidden rounded-lg bg-white"></div>
                                 </div>
                             </div>
 
-                            <!-- 左上：等角図 (高さ 15cm 相当 / 450px) -->
-                            <div class="bg-white rounded-xl p-1 flex flex-col items-center justify-center relative overflow-hidden border border-slate-400 shadow-inner my-2 shrink-0" style="height: 450px;">
-                                <div id="pdf-isometric-canvas-container" class="w-full h-full flex items-center justify-center overflow-hidden rounded-lg bg-white"></div>
-                            </div>
-
-                            <!-- 左下：部品表 (高さ 12cm 相当 / 340px・12行固定) -->
-                            <div class="flex flex-col gap-1 shrink-0" style="height: 340px;">
+                            <!-- 左下：部品表 (幅18cm × 高さ12cm 相当 / 355px・12行固定) -->
+                            <div class="flex flex-col gap-0.5 shrink-0 h-[355px] box-border">
                                 <h3 class="font-bold text-xs text-slate-950">部品表</h3>
-                                <div class="border border-slate-400 rounded h-full overflow-hidden">
-                                    <table class="w-full text-left border-collapse text-[10px] h-full">
+                                <div class="border border-slate-400 rounded h-full overflow-hidden box-border">
+                                    <table class="w-full text-left border-collapse text-[9.5px] h-full">
                                         <thead>
                                             <tr class="bg-slate-100 text-slate-900">
-                                                <th class="p-1 border border-slate-300 text-center w-8">#</th>
-                                                <th class="p-1 border border-slate-300">部品名</th>
-                                                <th class="p-1 border border-slate-300 text-right w-16">長さ(mm)</th>
-                                                <th class="p-1 border border-slate-300 text-right w-16">幅(mm)</th>
-                                                <th class="p-1 border border-slate-300 text-right w-16">厚さ(mm)</th>
+                                                <th class="p-0.5 border border-slate-300 text-center w-7">#</th>
+                                                <th class="p-0.5 border border-slate-300">部品名</th>
+                                                <th class="p-0.5 border border-slate-300 text-right w-14">長さ(mm)</th>
+                                                <th class="p-0.5 border border-slate-300 text-right w-14">幅(mm)</th>
+                                                <th class="p-0.5 border border-slate-300 text-right w-14">厚さ(mm)</th>
                                             </tr>
                                         </thead>
                                         <tbody id="pdf-modal-parts-tbody">
@@ -500,48 +500,48 @@
                         </div>
 
                         <!-- ================= 右側カラム (幅 18cm 相当 / 600px) ================= -->
-                        <div class="flex flex-col justify-between h-full pl-2">
+                        <div class="flex flex-col gap-2 justify-between h-full pl-1 box-border">
                             
-                            <!-- 右上：材料取り図 (4分割グリッド：各9cm×9cm 相当 / 高さ 520px) -->
-                            <div class="flex flex-col gap-1 shrink-0">
-                                <h3 class="font-bold text-xs text-slate-950 border-b border-slate-900 pb-1">材料取り図</h3>
-                                <div class="grid grid-cols-2 gap-3" style="height: 520px;">
-                                    <div id="pdf-slot-1" class="bg-slate-50 border border-slate-300 rounded p-1.5 flex flex-col items-center justify-between h-full">
-                                        <span class="text-[11px] font-bold text-amber-900 shrink-0">元板 (1枚目)</span>
-                                        <div class="w-full flex-1 flex items-center justify-center overflow-hidden my-1">
-                                            <svg id="pdf-board-svg-1" class="w-full max-h-[200px] bg-amber-100 rounded border" viewBox="0 0 600 450"></svg>
+                            <!-- 右上：材料取り図 (4分割グリッド：各9cm×9cm 相当 / 高さ 540px) -->
+                            <div class="flex flex-col gap-0.5 shrink-0">
+                                <h3 class="font-bold text-xs text-slate-950 border-b border-slate-800 pb-0.5">材料取り図</h3>
+                                <div class="grid grid-cols-2 gap-2 h-[540px] box-border">
+                                    <div id="pdf-slot-1" class="bg-slate-50 border border-slate-300 rounded p-1 flex flex-col items-center justify-between h-full box-border">
+                                        <span class="text-[10px] font-bold text-amber-900 shrink-0">元板 (1枚目)</span>
+                                        <div class="w-full flex-1 flex items-center justify-center overflow-hidden my-0.5">
+                                            <svg id="pdf-board-svg-1" class="w-full max-h-[220px] bg-amber-100 rounded border" viewBox="0 0 600 450"></svg>
                                         </div>
-                                        <span id="pdf-board-desc-1" class="text-[10px] text-slate-500 shrink-0">（未設定）</span>
+                                        <span id="pdf-board-desc-1" class="text-[9px] text-slate-500 shrink-0">（未設定）</span>
                                     </div>
-                                    <div id="pdf-slot-2" class="bg-slate-50 border border-slate-300 rounded p-1.5 flex flex-col items-center justify-between h-full">
-                                        <span class="text-[11px] font-bold text-amber-900 shrink-0">元板 (2枚目)</span>
-                                        <div class="w-full flex-1 flex items-center justify-center overflow-hidden my-1">
-                                            <svg id="pdf-board-svg-2" class="w-full max-h-[200px] bg-amber-100 rounded border" viewBox="0 0 600 450"></svg>
+                                    <div id="pdf-slot-2" class="bg-slate-50 border border-slate-300 rounded p-1 flex flex-col items-center justify-between h-full box-border">
+                                        <span class="text-[10px] font-bold text-amber-900 shrink-0">元板 (2枚目)</span>
+                                        <div class="w-full flex-1 flex items-center justify-center overflow-hidden my-0.5">
+                                            <svg id="pdf-board-svg-2" class="w-full max-h-[220px] bg-amber-100 rounded border" viewBox="0 0 600 450"></svg>
                                         </div>
-                                        <span id="pdf-board-desc-2" class="text-[10px] text-slate-500 shrink-0">（未設定）</span>
+                                        <span id="pdf-board-desc-2" class="text-[9px] text-slate-500 shrink-0">（未設定）</span>
                                     </div>
-                                    <div id="pdf-slot-3" class="bg-slate-50 border border-slate-300 rounded p-1.5 flex flex-col items-center justify-between h-full">
-                                        <span class="text-[11px] font-bold text-amber-900 shrink-0">元板 (3枚目)</span>
-                                        <div class="w-full flex-1 flex items-center justify-center overflow-hidden my-1">
-                                            <svg id="pdf-board-svg-3" class="w-full max-h-[200px] bg-amber-100 rounded border" viewBox="0 0 600 450"></svg>
+                                    <div id="pdf-slot-3" class="bg-slate-50 border border-slate-300 rounded p-1 flex flex-col items-center justify-between h-full box-border">
+                                        <span class="text-[10px] font-bold text-amber-900 shrink-0">元板 (3枚目)</span>
+                                        <div class="w-full flex-1 flex items-center justify-center overflow-hidden my-0.5">
+                                            <svg id="pdf-board-svg-3" class="w-full max-h-[220px] bg-amber-100 rounded border" viewBox="0 0 600 450"></svg>
                                         </div>
-                                        <span id="pdf-board-desc-3" class="text-[10px] text-slate-500 shrink-0">（未設定）</span>
+                                        <span id="pdf-board-desc-3" class="text-[9px] text-slate-500 shrink-0">（未設定）</span>
                                     </div>
-                                    <div id="pdf-slot-4" class="bg-slate-50 border border-slate-300 rounded p-1.5 flex flex-col items-center justify-between h-full">
-                                        <span class="text-[11px] font-bold text-amber-900 shrink-0">元板 (4枚目)</span>
-                                        <div class="w-full flex-1 flex items-center justify-center overflow-hidden my-1">
-                                            <svg id="pdf-board-svg-4" class="w-full max-h-[200px] bg-amber-100 rounded border" viewBox="0 0 600 450"></svg>
+                                    <div id="pdf-slot-4" class="bg-slate-50 border border-slate-300 rounded p-1 flex flex-col items-center justify-between h-full box-border">
+                                        <span class="text-[10px] font-bold text-amber-900 shrink-0">元板 (4枚目)</span>
+                                        <div class="w-full flex-1 flex items-center justify-center overflow-hidden my-0.5">
+                                            <svg id="pdf-board-svg-4" class="w-full max-h-[220px] bg-amber-100 rounded border" viewBox="0 0 600 450"></svg>
                                         </div>
-                                        <span id="pdf-board-desc-4" class="text-[10px] text-slate-500 shrink-0">（未設定）</span>
+                                        <span id="pdf-board-desc-4" class="text-[9px] text-slate-500 shrink-0">（未設定）</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- 右下：コメント欄 (高さ 5cm 相当 / 160px) -->
-                            <div class="flex flex-col gap-1 shrink-0" style="height: 160px;">
+                            <!-- 右下：コメント欄 (幅18cm × 高さ5cm 相当 / 160px) -->
+                            <div class="flex flex-col gap-0.5 shrink-0 h-[160px] box-border">
                                 <h3 class="font-bold text-xs text-slate-950 border-b border-slate-400 pb-0.5">コメント</h3>
-                                <div class="bg-slate-50 p-2.5 rounded border border-slate-400 h-full overflow-y-auto">
-                                    <p id="pdf-modal-comment-display" class="text-[11.5px] text-slate-700 whitespace-pre-wrap leading-relaxed">（コメント未入力）</p>
+                                <div class="bg-slate-50 p-2 rounded border border-slate-400 h-[135px] overflow-y-auto box-border">
+                                    <p id="pdf-modal-comment-display" class="text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed">（コメント未入力）</p>
                                 </div>
                             </div>
 
@@ -1560,19 +1560,19 @@
                 const tr = document.createElement('tr');
                 if(part) {
                     tr.innerHTML = `
-                        <td class="p-1 border border-slate-300 text-center font-bold">#${i}</td>
-                        <td class="p-1 border border-slate-300 font-bold text-amber-900 truncate">${part.name || '（未入力）'}</td>
-                        <td class="p-1 border border-slate-300 text-right">${part.length}</td>
-                        <td class="p-1 border border-slate-300 text-right">${part.width}</td>
-                        <td class="p-1 border border-slate-300 text-right">${part.thickness}</td>
+                        <td class="p-0.5 border border-slate-300 text-center font-bold">#${i}</td>
+                        <td class="p-0.5 border border-slate-300 font-bold text-amber-900 truncate">${part.name || '（未入力）'}</td>
+                        <td class="p-0.5 border border-slate-300 text-right">${part.length}</td>
+                        <td class="p-0.5 border border-slate-300 text-right">${part.width}</td>
+                        <td class="p-0.5 border border-slate-300 text-right">${part.thickness}</td>
                     `;
                 } else {
                     tr.innerHTML = `
-                        <td class="p-1 border border-slate-300 text-center text-slate-400">#${i}</td>
-                        <td class="p-1 border border-slate-300 text-slate-300"></td>
-                        <td class="p-1 border border-slate-300 text-right text-slate-300"></td>
-                        <td class="p-1 border border-slate-300 text-right text-slate-300"></td>
-                        <td class="p-1 border border-slate-300 text-right text-slate-300"></td>
+                        <td class="p-0.5 border border-slate-300 text-center text-slate-400">#${i}</td>
+                        <td class="p-0.5 border border-slate-300 text-slate-300"></td>
+                        <td class="p-0.5 border border-slate-300 text-right text-slate-300"></td>
+                        <td class="p-0.5 border border-slate-300 text-right text-slate-300"></td>
+                        <td class="p-0.5 border border-slate-300 text-right text-slate-300"></td>
                     `;
                 }
                 partsTbody.appendChild(tr);
@@ -1600,8 +1600,8 @@
             const isoContainer = document.getElementById('pdf-isometric-canvas-container');
             isoContainer.innerHTML = '';
             
-            const isoW = isoContainer.clientWidth || 580;
-            const isoH = 440;
+            const isoW = isoContainer.clientWidth || 585;
+            const isoH = 450;
             const isoScene = new THREE.Scene();
             isoScene.background = new THREE.Color(0xffffff);
 
