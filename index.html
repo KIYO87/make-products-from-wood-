@@ -453,7 +453,7 @@
                         <div class="flex flex-col gap-4 border-r pr-6 border-slate-200 h-full overflow-hidden">
                             <div>
                                 <h3 class="font-bold text-sm text-amber-900 border-b border-amber-200 pb-1 mb-2">📋 部品一覧表</h3>
-                                <div class="max-h-[160px] overflow-y-auto">
+                                <div class="max-h-[140px] overflow-y-auto">
                                     <table class="w-full text-left text-xs border-collapse">
                                         <thead>
                                             <tr class="bg-amber-100 text-amber-900">
@@ -474,7 +474,8 @@
 
                             <div class="flex-1 flex flex-col overflow-hidden">
                                 <h3 class="font-bold text-sm text-amber-900 border-b border-amber-200 pb-1 mb-2">🪵 材料取図 (けがき切断)</h3>
-                                <div id="pdf-modal-boards-container" class="flex flex-col gap-2 overflow-y-auto max-h-[260px] pr-1">
+                                <!-- 高さを適切に確保しつつスクロールまたは自動調整するコンテナ -->
+                                <div id="pdf-modal-boards-container" class="flex flex-col gap-2 overflow-y-auto max-h-[300px] pr-1">
                                     <!-- 動的挿入 -->
                                 </div>
                             </div>
@@ -484,16 +485,16 @@
                         <div class="flex flex-col gap-4 h-full">
                             <div>
                                 <h3 class="font-bold text-sm text-amber-900 border-b border-amber-200 pb-1 mb-2">📐 製作品 3D等角図 (アイソメトリック)</h3>
-                                <!-- 枠内に綺麗に収まるようサイズ調整された3D等角図コンテナ -->
-                                <div class="bg-white rounded-xl p-2 flex flex-col items-center justify-center h-[310px] relative overflow-hidden border border-slate-300 shadow-inner">
+                                <!-- 枠内に綺麗に収まりつつ、より大きく表示される3D等角図コンテナ -->
+                                <div class="bg-white rounded-xl p-2 flex flex-col items-center justify-center h-[340px] relative overflow-hidden border border-slate-300 shadow-inner">
                                     <div id="pdf-isometric-canvas-container" class="w-full h-full flex items-center justify-center overflow-hidden rounded-lg"></div>
                                     <span class="absolute bottom-2 right-3 text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded border">等角投影表示 (Isometric View)</span>
                                 </div>
                             </div>
 
-                            <div class="bg-amber-50/60 p-3.5 rounded-xl border border-amber-200 flex flex-col gap-1">
+                            <div class="bg-amber-50/60 p-3 rounded-xl border border-amber-200 flex flex-col gap-1">
                                 <h4 class="font-bold text-xs text-amber-900">💬 製作の感想・留意点メモ:</h4>
-                                <p id="pdf-modal-comment-display" class="text-xs text-slate-700 min-h-[40px] whitespace-pre-wrap leading-relaxed">（コメント未入力）</p>
+                                <p id="pdf-modal-comment-display" class="text-xs text-slate-700 min-h-[36px] whitespace-pre-wrap leading-relaxed">（コメント未入力）</p>
                             </div>
                         </div>
 
@@ -1536,39 +1537,39 @@
                 });
             }
 
-            // 材料取図ボード一覧構築
+            // 材料取図ボード一覧構築（印刷時も複数枚対応かつ綺麗に収まるサイズに調整）
             const boardsCont = document.getElementById('pdf-modal-boards-container');
             boardsCont.innerHTML = '';
             project.boards.forEach((board, index) => {
                 const div = document.createElement('div');
-                div.className = 'bg-slate-50 border p-2 rounded-lg flex flex-col gap-1';
+                div.className = 'bg-slate-50 border p-2 rounded-lg flex flex-col gap-1 shrink-0';
                 div.innerHTML = `
                     <span class="text-xs font-bold text-amber-900">材料 #${index+1}: ${board.name} (${board.length}×${board.width}mm)</span>
-                    <svg id="pdf-board-svg-${board.id}" class="w-full h-32 bg-amber-100 rounded border" viewBox="0 0 600 450"></svg>
+                    <svg id="pdf-board-svg-${board.id}" class="w-full h-28 bg-amber-100 rounded border" viewBox="0 0 600 450"></svg>
                 `;
                 boardsCont.appendChild(div);
                 setTimeout(() => { drawBoard(`pdf-board-svg-${board.id}`, board); }, 50);
             });
 
-            // 等角投影図 (Isometric View) の描画（枠内に確実に収める調整）
+            // 等角投影図 (Isometric View) の描画（より大きく表示しつつ枠内におさめる最適化）
             const isoContainer = document.getElementById('pdf-isometric-canvas-container');
             isoContainer.innerHTML = '';
             
             const isoW = isoContainer.clientWidth || 520;
-            const isoH = 300;
+            const isoH = 330;
             const isoScene = new THREE.Scene();
-            isoScene.background = new THREE.Color(0xffffff); // 背景を白に設定
+            isoScene.background = new THREE.Color(0xffffff); // 背景白
 
-            // 等角投影カメラ設定 (Isometric angle) - 全体が確実に収まるカメラ距離
-            const isoCamera = new THREE.PerspectiveCamera(35, isoW / isoH, 1, 5000);
-            isoCamera.position.set(450, 400, 450);
+            // カメラ距離を少し近づけて大きく表示しつつ、全体が枠内におさまるように調整
+            const isoCamera = new THREE.PerspectiveCamera(32, isoW / isoH, 1, 5000);
+            isoCamera.position.set(340, 300, 340);
             isoCamera.lookAt(0, 0, 0);
 
             const isoRenderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
             isoRenderer.setSize(isoW, isoH);
             isoContainer.appendChild(isoRenderer.domElement);
 
-            const ambLight = new THREE.AmbientLight(0xffffff, 0.8);
+            const ambLight = new THREE.AmbientLight(0xffffff, 0.85);
             isoScene.add(ambLight);
             const dLight = new THREE.DirectionalLight(0xffffff, 0.9);
             dLight.position.set(300, 500, 400);
