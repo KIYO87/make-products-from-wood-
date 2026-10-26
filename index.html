@@ -76,6 +76,7 @@
                 page-break-after: avoid !important;
                 page-break-before: avoid !important;
                 page-break-inside: avoid !important;
+                transform: none !important;
             }
         }
     </style>
@@ -452,8 +453,8 @@
             </div>
 
             <!-- A3横見立てプレビューシート (A3比率 420mm × 297mm ≒ 1260px × 890px) -->
-            <div id="pdf-preview-sheet" class="flex-1 overflow-y-auto p-2 bg-slate-200 flex justify-center items-center">
-                <div class="bg-white w-[1260px] h-[890px] shadow-2xl p-4 flex flex-col justify-between text-slate-800 relative border border-slate-300 box-border">
+            <div id="pdf-preview-sheet" class="flex-1 overflow-auto p-4 bg-slate-200 flex justify-center items-center">
+                <div class="bg-white w-[1260px] h-[890px] shadow-2xl p-4 flex flex-col justify-between text-slate-800 relative border border-slate-300 box-border shrink-0">
                     
                     <!-- 2カラム全体レイアウト (メディア9の配置に完全準拠) -->
                     <div class="grid grid-cols-2 gap-4 h-full flex-1 overflow-hidden">
@@ -470,23 +471,23 @@
                                         <span>名前: __________________</span>
                                     </div>
                                 </div>
-                                <div class="bg-white rounded-xl p-1 flex flex-col items-center justify-center relative overflow-hidden border border-slate-400 shadow-inner h-[280px]">
+                                <div class="bg-white rounded-xl p-1 flex flex-col items-center justify-center relative overflow-hidden border border-slate-400 shadow-inner h-[260px]">
                                     <div id="pdf-isometric-canvas-container" class="w-full h-full flex items-center justify-center overflow-hidden rounded-lg bg-white"></div>
                                 </div>
                             </div>
 
-                            <!-- 左下：部品表 (常に12個分の固定枠 #1〜#12) -->
+                            <!-- 左下：部品表 (常に12個分の固定枠 #1〜#12、スクロールなしで収める) -->
                             <div class="flex flex-col gap-1 flex-1 overflow-hidden">
                                 <h3 class="font-bold text-xs text-slate-950">部品表</h3>
-                                <div class="overflow-y-auto border border-slate-400 rounded flex-1 max-h-[220px]">
-                                    <table class="w-full text-left border-collapse text-[10px]">
+                                <div class="border border-slate-400 rounded flex-1 overflow-hidden">
+                                    <table class="w-full text-left border-collapse text-[9.5px]">
                                         <thead>
-                                            <tr class="bg-slate-100 text-slate-900 sticky top-0">
-                                                <th class="p-1 border border-slate-300 text-center w-8">#</th>
-                                                <th class="p-1 border border-slate-300">部品名</th>
-                                                <th class="p-1 border border-slate-300 text-right w-16">長さ(mm)</th>
-                                                <th class="p-1 border border-slate-300 text-right w-16">幅(mm)</th>
-                                                <th class="p-1 border border-slate-300 text-right w-16">厚さ(mm)</th>
+                                            <tr class="bg-slate-100 text-slate-900">
+                                                <th class="p-0.5 border border-slate-300 text-center w-7">#</th>
+                                                <th class="p-0.5 border border-slate-300">部品名</th>
+                                                <th class="p-0.5 border border-slate-300 text-right w-14">長さ(mm)</th>
+                                                <th class="p-0.5 border border-slate-300 text-right w-14">幅(mm)</th>
+                                                <th class="p-0.5 border border-slate-300 text-right w-14">厚さ(mm)</th>
                                             </tr>
                                         </thead>
                                         <tbody id="pdf-modal-parts-tbody">
@@ -1549,7 +1550,7 @@
 
             document.getElementById('pdf-modal-comment-display').textContent = project.comment || '（コメント未入力）';
 
-            // 部品表テーブルのレンダリング (常に12行固定生成)
+            // 部品表テーブルのレンダリング (常に12行固定生成、スクロールなしで収まるコンパクトな高さ)
             const partsTbody = document.getElementById('pdf-modal-parts-tbody');
             partsTbody.innerHTML = '';
             const validParts = (project.parts || []).filter(p => !p.excluded);
@@ -1559,19 +1560,19 @@
                 const tr = document.createElement('tr');
                 if(part) {
                     tr.innerHTML = `
-                        <td class="p-1 border border-slate-300 text-center font-bold">#${i}</td>
-                        <td class="p-1 border border-slate-300 font-bold text-amber-900">${part.name || '（未入力）'}</td>
-                        <td class="p-1 border border-slate-300 text-right">${part.length}</td>
-                        <td class="p-1 border border-slate-300 text-right">${part.width}</td>
-                        <td class="p-1 border border-slate-300 text-right">${part.thickness}</td>
+                        <td class="p-0.5 border border-slate-300 text-center font-bold">#${i}</td>
+                        <td class="p-0.5 border border-slate-300 font-bold text-amber-900 truncate">${part.name || '（未入力）'}</td>
+                        <td class="p-0.5 border border-slate-300 text-right">${part.length}</td>
+                        <td class="p-0.5 border border-slate-300 text-right">${part.width}</td>
+                        <td class="p-0.5 border border-slate-300 text-right">${part.thickness}</td>
                     `;
                 } else {
                     tr.innerHTML = `
-                        <td class="p-1 border border-slate-300 text-center text-slate-400">#${i}</td>
-                        <td class="p-1 border border-slate-300 text-slate-300"></td>
-                        <td class="p-1 border border-slate-300 text-right text-slate-300"></td>
-                        <td class="p-1 border border-slate-300 text-right text-slate-300"></td>
-                        <td class="p-1 border border-slate-300 text-right text-slate-300"></td>
+                        <td class="p-0.5 border border-slate-300 text-center text-slate-400">#${i}</td>
+                        <td class="p-0.5 border border-slate-300 text-slate-300"></td>
+                        <td class="p-0.5 border border-slate-300 text-right text-slate-300"></td>
+                        <td class="p-0.5 border border-slate-300 text-right text-slate-300"></td>
+                        <td class="p-0.5 border border-slate-300 text-right text-slate-300"></td>
                     `;
                 }
                 partsTbody.appendChild(tr);
@@ -1600,7 +1601,7 @@
             isoContainer.innerHTML = '';
             
             const isoW = isoContainer.clientWidth || 550;
-            const isoH = 280;
+            const isoH = 260;
             const isoScene = new THREE.Scene();
             isoScene.background = new THREE.Color(0xffffff);
 
