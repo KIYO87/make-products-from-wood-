@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>木工製作シミュレーション（3D組立・材料取図）</title>
+    <!-- Tailwind CSSの読み込み -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Three.js 3Dライブラリの読み込み -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { font-family: 'Noto Sans JP', 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- ヘッダー -->
+    <header class="bg-amber-800 text-white shadow-md py-4 px-6 flex justify-between items-center">
+        <h1 class="text-xl font-bold flex items-center gap-2 cursor-pointer" onclick="showDashboard()">
+            🪵 中学校技術科 木工加工シミュレーター
+        </h1>
+        <div class="flex items-center gap-3">
+            <button onclick="showDashboard()" id="nav-home-btn" class="hidden text-xs bg-amber-900 hover:bg-amber-700 px-3 py-1.5 rounded-lg border border-amber-700 transition">
+                🏠 プロジェクト一覧へ
+            </button>
+            <span class="text-xs bg-amber-900 px-3 py-1 rounded-full border border-amber-700" id="header-status-badge">ホーム画面</span>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col gap-6">
+
+        <!-- ────────────────────────────────────────────── -->
+        <!-- トップページ（プロジェクト一覧・管理画面） -->
+        <!-- ────────────────────────────────────────────── -->
+        <section id="view-dashboard" class="flex flex-col gap-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-amber-900">木工製作プロジェクト一覧</h2>
+                    <p class="text-sm text-slate-500">保存された作品データの確認・編集・新規作成を行います。</p>
+                </div>
+                <button onclick="createNewProject()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-5 py-3 rounded-xl shadow-md transition flex items-center gap-2 text-sm">
+                    ✨ 新規プロジェクト作成
+                </button>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col gap-4">
+                <h3 class="font-bold text-slate-700 text-base border-b pb-2">📂 保存済みプロジェクト</h3>
+                <div id="project-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- 動的にカードが挿入されます -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ────────────────────────────────────────────── -->
+        <!-- シミュレーション作業画面（ステップ①〜⑤） -->
+        <!-- ────────────────────────────────────────────── -->
+        <section id="view-simulator" class="hidden flex flex-col gap-6">
+            <!-- プロジェクト名変更バー -->
+            <div class="bg-white px-6 py-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
+                <label class="text-xs font-bold text-slate-500 whitespace-nowrap">プロジェクト名:</label>
+                <input type="text" id="current-project-title-input" onchange="updateCurrentProjectTitle(this.value)" class="font-bold text-amber-900 text-base bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 flex-1 focus:bg-white focus:ring-2 focus:ring-amber-500 transition">
+            </div>
+
+            <!-- ステップナビゲーション -->
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 bg-white p-3 rounded-2xl shadow-sm border border-slate-200 text-center text-xs font-bold">
+                <div onclick="switchStep(1)" id="step1-indicator" class="p-2 rounded-lg bg-amber-600 text-white transition cursor-pointer">① 板材の設定</div>
+                <div onclick="switchStep(2)" id="step2-indicator" class="p-2 rounded-lg bg-slate-100 text-slate-400 transition cursor-pointer">② けがき・切断</div>
+                <div onclick="switchStep(3)" id="step3-indicator" class="p-2 rounded-lg bg-slate-100 text-slate-400 transition cursor-pointer">③ 部品名・不要パーツ</div>
+                <div onclick="switchStep(4)" id="step4-indicator" class="p-2 rounded-lg bg-slate-100 text-slate-400 transition cursor-pointer">④ 材料取図一覧</div>
+                <div onclick="switchStep(5)" id="step5-indicator" class="p-2 rounded-lg bg-slate-100 text-slate-400 transition cursor-pointer col-span-2 sm:col-span-1">⑤ 3D組立</div>
+            </div>
+
+            <!-- ステップ①：板材の設定 -->
+            <div id="step1-container" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col gap-6">
+                <div class="border-b pb-3">
+                    <h2 class="text-lg font-bold text-amber-900">① 板材の設定</h2>
+                    <p class="text-sm text-slate-500">使用する板材の「名称」「長さ」「幅」「厚さ」を設定します。必要に応じて板を追加できます。</p>
+                </div>
+                <div id="boards-list" class="flex flex-col gap-4">
+                    <!-- 動的に板設定行が追加されます -->
+                </div>
+                <div class="flex justify-between items-center pt-4 border-t">
+                    <button onclick="addBoardInput()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2.5 rounded-xl text-sm transition border border-slate-300 flex items-center gap-2">
+                        ➕ 板材を追加する
+                    </button>
+                    <button onclick="goToStep2()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg transition flex items-center gap-2 text-base">
+                        次へ：けがき・切断へ ➔
+                    </button>
+                </div>
+            </div>
+
+            <!-- ステップ②：けがき・切断 -->
+            <div id="step2-container" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hidden flex flex-col gap-6">
+                <div class="border-b pb-3 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold text-amber-900">② けがき・切断の線引</h2>
+                        <p class="text-sm text-slate-500">板を選択し、縦切断または横切断の線を任意の位置や範囲で引き、切断線を決定します。</p>
+                    </div>
+                    <button onclick="backToStep1()" class="text-sm text-amber-800 hover:underline">← 板材設定に戻る</button>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">対象の板材を選択:</label>
+                            <select id="active-board-select" onchange="switchActiveBoard()" class="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold"></select>
+                        </div>
+
+                        <div class="flex flex-col gap-2">
+                            <label class="block text-xs font-bold text-slate-600">切断方向:</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label class="flex items-center gap-2 bg-white p-2.5 border rounded-lg cursor-pointer text-sm font-medium">
+                                    <input type="radio" name="cut-dir" value="v" checked class="text-amber-600"> 縦切断 (幅方向)
+                                </label>
+                                <label class="flex items-center gap-2 bg-white p-2.5 border rounded-lg cursor-pointer text-sm font-medium">
+                                    <input type="radio" name="cut-dir" value="h" class="text-amber-600"> 横切断 (長さ方向)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col gap-1.5">
+                            <label id="cut-coord-label" class="text-xs font-bold text-slate-600">位置 (長さ方向のX座標 mm):</label>
+                            <input type="number" id="cut-coord-input" value="100" class="w-full p-2 bg-white border border-slate-300 rounded-lg text-sm">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label id="cut-start-label" class="block text-xs font-semibold text-slate-500 mb-1">開始位置 (最小 mm):</label>
+                                <input type="number" id="cut-start-input" value="0" class="w-full p-2 bg-white border border-slate-300 rounded-lg text-sm">
+                            </div>
+                            <div>
+                                <label id="cut-end-label" class="block text-xs font-semibold text-slate-500 mb-1">終了位置 (最大 mm):</label>
+                                <input type="number" id="cut-end-input" value="150" class="w-full p-2 bg-white border border-slate-300 rounded-lg text-sm">
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col gap-2 pt-2">
+                            <button onclick="addPartialCutLine()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow">
+                                ✂️ 切断線（けがき）を追加
+                            </button>
+                            <button onclick="resetCutsForCurrentBoard()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium py-2 rounded-xl text-xs transition">
+                                この板の切断線をすべてリセット
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900 rounded-xl p-4 flex flex-col items-center justify-center lg:col-span-2 relative">
+                        <span id="board-dimension-info" class="text-xs text-amber-400 font-bold mb-2"></span>
+                        <div class="w-full overflow-auto flex items-center justify-center bg-amber-50/10 rounded-lg p-2">
+                            <svg id="board-svg" class="w-full max-h-[420px] bg-amber-100 rounded border border-amber-900" viewBox="0 0 600 450"></svg>
+                        </div>
+                        <span class="text-[11px] text-slate-400 mt-2">💡 横軸=長さ(mm) / 縦軸=幅(mm) - 製図ルールに基づく寸法表示</span>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center pt-4 border-t">
+                    <button onclick="backToStep1()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-xl text-sm transition border border-slate-300">
+                        ← 板材設定に戻る
+                    </button>
+                    <button onclick="goToStep3()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg transition flex items-center gap-2 text-base">
+                        次へ：部品名の入力へ ➔
+                    </button>
+                </div>
+            </div>
+
+            <!-- ステップ③：部品名・不要パーツ設定 -->
+            <div id="step3-container" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hidden flex flex-col gap-6">
+                <div class="border-b pb-3 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold text-amber-900">③ 部品名の入力と不要パーツの除外</h2>
+                        <p class="text-sm text-slate-500">切断されて切り出された各パーツに名称（例：側板、底板など）を入力し、使わない端材にチェックを入れます。</p>
+                    </div>
+                    <button onclick="backToStep2()" class="text-sm text-amber-800 hover:underline">← けがき画面に戻る</button>
+                </div>
+
+                <div id="parts-config-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- 動的にパーツカードが生成されます -->
+                </div>
+
+                <div class="flex justify-between items-center pt-4 border-t">
+                    <button onclick="backToStep2()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-xl text-sm transition border border-slate-300">
+                        ← けがき画面に戻る
+                    </button>
+                    <button onclick="confirmAndSaveStep3()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg transition flex items-center gap-2 text-base">
+                        設定を保存して材料取図一覧へ ➔
+                    </button>
+                </div>
+            </div>
+
+            <!-- ステップ④：材料取図の一覧確認 -->
+            <div id="step4-container" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hidden flex flex-col gap-6">
+                <div class="border-b pb-3 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold text-amber-900">④ 材料取図および部品図の一覧確認</h2>
+                        <p class="text-sm text-slate-500">各板材のけがき切断図と、切り出された部品の一覧表を確認します。</p>
+                    </div>
+                    <button onclick="switchStep(3)" class="text-sm text-amber-800 hover:underline">← 部品設定に戻る</button>
+                </div>
+
+                <div class="flex flex-col gap-6">
+                    <h3 class="font-bold text-amber-900 text-base border-b pb-2">🪵 けがき切断図一覧</h3>
+                    <div id="summary-boards-container" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- 各板の取図が自動配置されます -->
+                    </div>
+
+                    <h3 class="font-bold text-amber-900 text-base border-b pb-2 mt-4">📋 部品一覧表</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-amber-100 text-amber-900">
+                                    <th class="p-3 border border-amber-200">#</th>
+                                    <th class="p-3 border border-amber-200">元板名</th>
+                                    <th class="p-3 border border-amber-200">部品名</th>
+                                    <th class="p-3 border border-amber-200">長さ (mm)</th>
+                                    <th class="p-3 border border-amber-200">幅 (mm)</th>
+                                    <th class="p-3 border border-amber-200">厚さ (mm)</th>
+                                    <th class="p-3 border border-amber-200">状態</th>
+                                </tr>
+                            </thead>
+                            <tbody id="summary-parts-tbody">
+                                <!-- 部品データ行 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center pt-4 border-t">
+                    <button onclick="switchStep(3)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-5 py-2.5 rounded-xl text-sm transition border border-slate-300">
+                        ← 部品設定に戻る
+                    </button>
+                    <button onclick="goToAssembly()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg transition flex items-center gap-2 text-base">
+                        次へ：3D組立へ進む ➔
+                    </button>
+                </div>
+            </div>
+
+            <!-- ステップ⑤：3D組立シミュレーション -->
+            <section id="step5-container" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hidden flex flex-col gap-6">
+                <div class="border-b pb-3 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold text-amber-900">⑤ 3D組立シミュレーション</h2>
+                        <p class="text-sm text-slate-500">切り出した部品を配置・回転させて、製作品を3Dで組み立てます。</p>
+                    </div>
+                    <button onclick="backToStep4()" class="text-sm text-amber-800 hover:underline">← 材料取図一覧に戻る</button>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col gap-4 lg:col-span-1">
+                        <h3 class="font-bold text-sm text-slate-700 border-b pb-2">🛠️ 使用する部品一覧</h3>
+                        <div id="assembly-parts-palette" class="flex flex-col gap-2 max-h-[160px] overflow-y-auto">
+                            <!-- 動的に部品ボタンが生成されます -->
+                        </div>
+
+                        <div class="border-t pt-3 flex flex-col gap-3" id="selected-part-controls">
+                            <h3 class="font-bold text-sm text-amber-900" id="current-selected-part-name">選択中の部品: なし</h3>
+                            
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-xs font-semibold text-slate-600">回転 (90°):</label>
+                                <div class="grid grid-cols-3 gap-1">
+                                    <button onclick="rotateSelectedPart('x', 90)" class="bg-white border hover:bg-amber-50 text-xs py-1.5 rounded font-medium text-slate-700">X +90°</button>
+                                    <button onclick="rotateSelectedPart('y', 90)" class="bg-white border hover:bg-amber-50 text-xs py-1.5 rounded font-medium text-slate-700">Y +90°</button>
+                                    <button onclick="rotateSelectedPart('z', 90)" class="bg-white border hover:bg-amber-50 text-xs py-1.5 rounded font-medium text-slate-700">Z +90°</button>
+                                </div>
+                            </div>
+
+                            <!-- 1mm微調整ボタン（色付き） -->
+                            <div class="flex flex-col gap-1">
+                                <label class="text-xs font-semibold text-slate-600">位置移動 (1mm 単位):</label>
+                                <div class="grid grid-cols-3 gap-1 text-xs">
+                                    <button onclick="moveSelectedPart('x', -1)" class="bg-red-50 border border-red-200 hover:bg-red-100 py-1 rounded font-bold text-red-700" title="X軸 -1mm">X -1</button>
+                                    <button onclick="moveSelectedPart('y', 1)" class="bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 py-1 rounded font-bold text-emerald-700" title="Y軸 +1mm">Y +1</button>
+                                    <button onclick="moveSelectedPart('x', 1)" class="bg-red-50 border border-red-200 hover:bg-red-100 py-1 rounded font-bold text-red-700" title="X軸 +1mm">X +1</button>
+                                </div>
+                                <div class="grid grid-cols-3 gap-1 text-xs">
+                                    <button onclick="moveSelectedPart('z', -1)" class="bg-blue-50 border border-blue-200 hover:bg-blue-100 py-1 rounded font-bold text-blue-700" title="Z軸 -1mm">Z -1</button>
+                                    <button onclick="moveSelectedPart('y', -1)" class="bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 py-1 rounded font-bold text-emerald-700" title="Y軸 -1mm">Y -1</button>
+                                    <button onclick="moveSelectedPart('z', 1)" class="bg-blue-50 border border-blue-200 hover:bg-blue-100 py-1 rounded font-bold text-blue-700" title="Z軸 +1mm">Z +1</button>
+                                </div>
+                            </div>
+
+                            <!-- 5mm微調整ボタン（色付き） -->
+                            <div class="flex flex-col gap-1">
+                                <label class="text-xs font-semibold text-slate-600">位置移動 (5mm 単位):</label>
+                                <div class="grid grid-cols-3 gap-1 text-xs">
+                                    <button onclick="moveSelectedPart('x', -5)" class="bg-red-100 border border-red-300 hover:bg-red-200 py-1 rounded font-bold text-red-800" title="X軸 -5mm">X -5</button>
+                                    <button onclick="moveSelectedPart('y', 5)" class="bg-emerald-100 border border-emerald-300 hover:bg-emerald-200 py-1 rounded font-bold text-emerald-800" title="Y軸 +5mm">Y +5</button>
+                                    <button onclick="moveSelectedPart('x', 5)" class="bg-red-100 border border-red-300 hover:bg-red-200 py-1 rounded font-bold text-red-800" title="X軸 +5mm">X +5</button>
+                                </div>
+                                <div class="grid grid-cols-3 gap-1 text-xs">
+                                    <button onclick="moveSelectedPart('z', -5)" class="bg-blue-100 border border-blue-300 hover:bg-blue-200 py-1 rounded font-bold text-blue-800" title="Z軸 -5mm">Z -5</button>
+                                    <button onclick="moveSelectedPart('y', -5)" class="bg-emerald-100 border border-emerald-300 hover:bg-emerald-200 py-1 rounded font-bold text-emerald-800" title="Y軸 -5mm">Y -5</button>
+                                    <button onclick="moveSelectedPart('z', 5)" class="bg-blue-100 border border-blue-300 hover:bg-blue-200 py-1 rounded font-bold text-blue-800" title="Z軸 +5mm">Z +5</button>
+                                </div>
+                            </div>
+
+                            <button onclick="removeSelectedPartFromScene()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-medium py-1.5 rounded border border-rose-200 transition">
+                                シーンから外す
+                            </button>
+                        </div>
+
+                        <div class="border-t pt-2">
+                            <span class="text-[10px] text-slate-500 leading-tight block">
+                                💡 <b>操作</b>: パーツクリックで選択 / ドラッグで視点回転 / ホイールでポインタ位置中心に拡大
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900 rounded-xl p-2 flex flex-col items-center justify-center min-h-[500px] relative overflow-hidden lg:col-span-3">
+                        <div id="three-canvas-container" class="w-full h-[500px] rounded-lg overflow-hidden cursor-grab active:cursor-grabbing"></div>
+                        
+                        <div class="absolute top-4 left-4 bg-slate-800/90 border border-slate-700 px-3 py-2 rounded-lg text-xs text-slate-200 flex flex-col gap-1 shadow-md pointer-events-none">
+                            <span class="font-bold text-amber-400">🌐 3D空間 軸方向ガイド (中心基準)</span>
+                            <div class="flex items-center gap-3 mt-0.5">
+                                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> <b>X軸</b> (赤)</span>
+                                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-green-500 inline-block"></span> <b>Y軸</b> (緑)</span>
+                                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span> <b>Z軸</b> (青)</span>
+                            </div>
+                        </div>
+
+                        <div class="absolute bottom-3 left-4 text-xs text-slate-300 bg-slate-800/80 px-3 py-1.5 rounded border border-slate-700 pointer-events-none">
+                            3D組立スペース（重なり・向き確認用）
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center pt-4 border-t">
+                    <button onclick="backToStep4()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-5 py-2.5 rounded-lg text-sm transition border border-slate-300">
+                        ← 材料取図一覧に戻る
+                    </button>
+                    <button onclick="goToStep6()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg transition flex items-center gap-2 text-base">
+                        🖨️ PDF出力画面へ進む ➔
+                    </button>
+                </div>
+            </section>
+
+            <!-- ステップ⑥：PDF出力・コメント・レイアウト確認 -->
+            <section id="step6-container" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hidden flex flex-col gap-6">
+                <div class="border-b pb-3 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold text-amber-900">⑥ PDF出力・コメント入力</h2>
+                        <p class="text-sm text-slate-500">製作レポート用のコメントを入力し、A3横2段組レイアウトを確認してPDFとして保存できます。</p>
+                    </div>
+                    <button onclick="goToAssembly()" class="text-sm text-amber-800 hover:underline">← 3D組立に戻る</button>
+                </div>
+
+                <div class="flex flex-col gap-4 max-w-2xl bg-slate-50 p-5 rounded-xl border border-slate-200">
+                    <label class="block text-xs font-bold text-slate-700">製作の感想・留意点（任意入力・PDFに掲載されます）:</label>
+                    <textarea id="pdf-comment-input" rows="3" onchange="updateProjectComment(this.value)" placeholder="例：側板のけがき寸法に気をつけ、垂直に組み立てられるようにダボやクランプを使って工夫した。" class="w-full p-3 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-amber-500"></textarea>
+                </div>
+
+                <div class="flex items-center gap-4 pt-2">
+                    <button onclick="openPdfLayoutModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg transition flex items-center gap-2 text-base">
+                        👁️ PDFレイアウトの確認
+                    </button>
+                    <button onclick="downloadPdfLayout()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3 rounded-xl shadow-lg transition flex items-center gap-2 text-base">
+                        📥 PDFを保存 (ダウンロード)
+                    </button>
+                </div>
+
+                <div class="flex justify-between items-center pt-4 border-t">
+                    <button onclick="goToAssembly()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-5 py-2.5 rounded-lg text-sm transition border border-slate-300">
+                        ← 3D組立に戻る
+                    </button>
+                </div>
+            </section>
+        </section>
+
+    </main>
+
+    <!-- A3横2段組 PDFレイアウト確認モーダル -->
+    <div id="pdf-layout-modal" class="fixed inset-0 bg-black/70 hidden flex items-center justify-center p-4 z-50 overflow-auto">
+        <div class="bg-white rounded-2xl w-full max-w-6xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <span class="text-xl">📄</span>
+                    <h3 class="font-bold text-base">A3横 2段組 PDFレイアウト確認</h3>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="downloadPdfLayout()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs transition">📥 PDFを保存</button>
+                    <button onclick="closePdfLayoutModal()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-4 py-2 rounded-lg text-xs transition">✕ 閉じる</button>
+                </div>
+            </div>
+
+            <!-- A3横見立てプレビューエリア -->
+            <div id="pdf-preview-sheet" class="flex-1 overflow-y-auto p-8 bg-slate-200 flex justify-center">
+                <!-- A3用紙サイズ比率 (横長 297mm × 420mm ≒ 1188px × 840px) -->
+                <div class="bg-white w-[1120px] min-h-[790px] shadow-2xl p-10 flex flex-col justify-between text-slate-800 relative border border-slate-300">
+                    
+                    <!-- ヘッダータイトル -->
+                    <div class="border-b-2 border-amber-800 pb-3 flex justify-between items-end">
+                        <div>
+                            <span class="text-xs font-bold text-amber-700 tracking-wider">中学校技術科 木工製作実習レポート</span>
+                            <h1 id="pdf-modal-title" class="text-2xl font-bold text-amber-900 mt-1">木工製作プロジェクト</h1>
+                        </div>
+                        <div class="text-right text-xs text-slate-500">
+                            出力日時: <span id="pdf-modal-date"></span>
+                        </div>
+                    </div>
+
+                    <!-- 2段組メインコンテンツ (左右2カラム) -->
+                    <div class="grid grid-cols-2 gap-8 my-6 flex-1 items-start">
+                        
+                        <!-- 左カラム：部品表 & 材料取図 -->
+                        <div class="flex flex-col gap-6 border-r pr-8 border-slate-200">
+                            <div>
+                                <h3 class="font-bold text-sm text-amber-900 border-b border-amber-200 pb-1 mb-2">📋 部品一覧表</h3>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left text-xs border-collapse">
+                                        <thead>
+                                            <tr class="bg-amber-100 text-amber-900">
+                                                <th class="p-2 border">#</th>
+                                                <th class="p-2 border">元板</th>
+                                                <th class="p-2 border">部品名</th>
+                                                <th class="p-2 border">長さ</th>
+                                                <th class="p-2 border">幅</th>
+                                                <th class="p-2 border">厚さ</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="pdf-modal-parts-tbody">
+                                            <!-- 動的挿入 -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 class="font-bold text-sm text-amber-900 border-b border-amber-200 pb-1 mb-2">🪵 材料取図 (けがき切断)</h3>
+                                <div id="pdf-modal-boards-container" class="flex flex-col gap-3 max-h-[320px] overflow-y-auto">
+                                    <!-- 動的挿入 -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 右カラム：等角図 (3D組立) & コメント -->
+                        <div class="flex flex-col gap-6">
+                            <div>
+                                <h3 class="font-bold text-sm text-amber-900 border-b border-amber-200 pb-1 mb-2">📐 製作品 3D等角図 (アイソメトリック)</h3>
+                                <div class="bg-white rounded-xl p-3 flex flex-col items-center justify-center h-[340px] relative overflow-hidden border border-slate-300 shadow-inner">
+                                    <div id="pdf-isometric-canvas-container" class="w-full h-full flex items-center justify-center"></div>
+                                    <span class="absolute bottom-2 right-3 text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded border">等角投影表示 (Isometric View)</span>
+                                </div>
+                            </div>
+
+                            <div class="bg-amber-50/60 p-4 rounded-xl border border-amber-200 flex flex-col gap-1.5">
+                                <h4 class="font-bold text-xs text-amber-900">💬 製作の感想・留意点メモ:</h4>
+                                <p id="pdf-modal-comment-display" class="text-xs text-slate-700 min-h-[40px] whitespace-pre-wrap">（コメント未入力）</p>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- フッター -->
+                    <div class="border-t pt-3 flex justify-between items-center text-xs text-slate-400">
+                        <span>中学校技術科 木工加工シミュレーター</span>
+                        <span>Page 1 / 1</span>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- カスタムメッセージボックス -->
+    <div id="custom-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl flex flex-col gap-4 text-center">
+            <div id="modal-icon" class="text-3xl">⚠️</div>
+            <p id="modal-message" class="text-sm font-medium text-slate-700">メッセージ</p>
+            <button onclick="closeModal()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded-xl text-sm">閉じる</button>
+        </div>
+    </div>
+
+    <!-- JavaScript ロジック -->
+    <script>
+        // アプリケーションの状態管理
+        let appData = {
+            projects: [],
+            currentProjectId: null
+        };
+
+        // Three.js 関連のグローバル変数
+        let scene, camera, renderer, raycaster, mouse;
+        let assembledMeshes = [];
+        let selectedMesh = null;
+        let controlsTarget = new THREE.Vector3(0, 0, 0);
+
+        // 初期化実行
+        window.onload = function() {
+            loadProjectsFromStorage();
+            showDashboard();
+            
+            // ラジオボタンの切り替え時にラベルや初期値を動的に変更
+            document.addEventListener('change', function(e) {
+                if(e.target && e.target.name === 'cut-dir') {
+                    const project = getCurrentProject();
+                    if(!project) return;
+                    const board = project.boards.find(b => b.id === project.activeBoardId);
+                    if(!board) return;
+
+                    const coordLabel = document.getElementById('cut-coord-label');
+                    const startLabel = document.getElementById('cut-start-label');
+                    const endLabel = document.getElementById('cut-end-label');
+                    const startInput = document.getElementById('cut-start-input');
+                    const endInput = document.getElementById('cut-end-input');
+
+                    if(e.target.value === 'v') {
+                        coordLabel.textContent = '位置 (長さ方向のX座標 mm):';
+                        startLabel.textContent = '開始位置 (幅方向Y 最小 mm):';
+                        endLabel.textContent = '終了位置 (幅方向Y 最大 mm):';
+                        startInput.value = 0;
+                        endInput.value = board.width;
+                    } else {
+                        coordLabel.textContent = '位置 (幅方向のY座標 mm):';
+                        startLabel.textContent = '開始位置 (長さ方向X 最小 mm):';
+                        endLabel.textContent = '終了位置 (長さ方向X 最大 mm):';
+                        startInput.value = 0;
+                        endInput.value = board.length;
+                    }
+                }
+            });
+        };
+
+        // --- ローカルストレージ制御 ---
+        function loadProjectsFromStorage() {
+            const saved = localStorage.getItem('woodworking_projects');
+            if(saved) {
+                try {
+                    appData.projects = JSON.parse(saved);
+                } catch(e) {
+                    appData.projects = [];
+                }
+            } else {
+                appData.projects = [
+                    {
+                        id: 'proj_' + Date.now(),
+                        title: '本立て（ブックスタンド）製作',
+                        updatedAt: new Date().toISOString(),
+                        boards: [
+                            { id: 1, name: '底板', length: 300, width: 150, thickness: 12, cuts: [] },
+                            { id: 2, name: '側板', length: 200, width: 150, thickness: 12, cuts: [] }
+                        ],
+                        activeBoardId: 1,
+                        parts: [],
+                        assemblyParts: []
+                    }
+                ];
+                saveProjectsToStorage();
+            }
+        }
+
+        function saveProjectsToStorage() {
+            localStorage.setItem('woodworking_projects', JSON.stringify(appData.projects));
+        }
+
+        // --- 画面切替 ---
+        function showDashboard() {
+            if(appData.currentProjectId) {
+                saveCurrentProject();
+            }
+            appData.currentProjectId = null;
+
+            document.getElementById('view-dashboard').classList.remove('hidden');
+            document.getElementById('view-simulator').classList.add('hidden');
+            document.getElementById('nav-home-btn').classList.add('hidden');
+            document.getElementById('header-status-badge').textContent = 'ホーム画面';
+
+            renderProjectList();
+        }
+
+        function showSimulator(projectId) {
+            appData.currentProjectId = projectId;
+            const project = getCurrentProject();
+            if(!project) return;
+
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-simulator').classList.remove('hidden');
+            document.getElementById('nav-home-btn').classList.remove('hidden');
+            document.getElementById('header-status-badge').textContent = 'シミュレーション中';
+
+            document.getElementById('current-project-title-input').value = project.title;
+            switchStep(1);
+        }
+
+        function getCurrentProject() {
+            return appData.projects.find(p => p.id === appData.currentProjectId);
+        }
+
+        // --- プロジェクト管理 ---
+        function renderProjectList() {
+            const container = document.getElementById('project-list-container');
+            container.innerHTML = '';
+
+            if(appData.projects.length === 0) {
+                container.innerHTML = `<p class="text-sm text-slate-500 col-span-full">保存されたプロジェクトはありません。「新規プロジェクト作成」ボタンから始めてください。</p>`;
+                return;
+            }
+
+            const sortedProjects = [...appData.projects].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+            sortedProjects.forEach(proj => {
+                const dateStr = new Date(proj.updatedAt).toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                const card = document.createElement('div');
+                card.className = 'bg-slate-50 border border-slate-200 p-5 rounded-xl shadow-sm hover:border-amber-400 transition flex flex-col justify-between gap-4';
+                card.innerHTML = `
+                    <div class="flex flex-col gap-2">
+                        <div class="flex justify-between items-start gap-2">
+                            <input type="text" value="${proj.title}" onchange="renameProject('${proj.id}', this.value)" class="font-bold text-amber-900 text-base bg-white border border-slate-300 rounded px-2 py-1 w-full focus:ring-2 focus:ring-amber-500" title="クリックして名前を変更">
+                        </div>
+                        <span class="text-xs text-slate-400">最終更新: ${dateStr}</span>
+                        <div class="text-xs text-slate-600 bg-white p-2 rounded border border-slate-200">
+                            登録板材数: <b>${proj.boards ? proj.boards.length : 0}枚</b>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 pt-2 border-t border-slate-200">
+                        <button onclick="showSimulator('${proj.id}')" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded-lg text-xs transition shadow-sm text-center">
+                            🛠️ 開いて編集する
+                        </button>
+                        <button onclick="deleteProject('${proj.id}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 font-medium px-3 py-2 rounded-lg text-xs transition border border-rose-200" title="削除">
+                            🗑️ 削除
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function createNewProject() {
+            const newId = 'proj_' + Date.now();
+            const newProj = {
+                id: newId,
+                title: '新規木工製作 ' + new Date().toLocaleDateString('ja-JP'),
+                updatedAt: new Date().toISOString(),
+                boards: [
+                    { id: 1, name: '板材 1', length: 600, width: 300, thickness: 12, cuts: [] }
+                ],
+                activeBoardId: 1,
+                parts: [],
+                assemblyParts: []
+            };
+            appData.projects.push(newProj);
+            saveProjectsToStorage();
+            showSimulator(newId);
+        }
+
+        function renameProject(id, newTitle) {
+            const p = appData.projects.find(item => item.id === id);
+            if(p) {
+                p.title = newTitle.trim() || '無題のプロジェクト';
+                p.updatedAt = new Date().toISOString();
+                saveProjectsToStorage();
+            }
+        }
+
+        function updateCurrentProjectTitle(newTitle) {
+            const p = getCurrentProject();
+            if(p) {
+                p.title = newTitle.trim() || '無題のプロジェクト';
+                p.updatedAt = new Date().toISOString();
+                saveProjectsToStorage();
+            }
+        }
+
+        function deleteProject(id) {
+            if(appData.projects.length <= 1) {
+                showAlert('最後のプロジェクトは削除できません。');
+                return;
+            }
+            appData.projects = appData.projects.filter(item => item.id !== id);
+            saveProjectsToStorage();
+            renderProjectList();
+        }
+
+        function saveCurrentProject() {
+            const p = getCurrentProject();
+            if(p) {
+                p.updatedAt = new Date().toISOString();
+                saveProjectsToStorage();
+            }
+        }
+
+        // --- メッセージボックス制御 ---
+        function showAlert(msg, type = 'warning') {
+            const modal = document.getElementById('custom-modal');
+            const msgEl = document.getElementById('modal-message');
+            const iconEl = document.getElementById('modal-icon');
+            msgEl.textContent = msg;
+            iconEl.textContent = type === 'success' ? '🎉' : '⚠️';
+            modal.classList.remove('hidden');
+        }
+        function closeModal() {
+            document.getElementById('custom-modal').classList.add('hidden');
+        }
+
+        // --- ステップ切替 ---
+        function switchStep(stepNumber) {
+            saveCurrentProject();
+
+            document.getElementById('step1-container').classList.add('hidden');
+            document.getElementById('step2-container').classList.add('hidden');
+            document.getElementById('step3-container').classList.add('hidden');
+            document.getElementById('step4-container').classList.add('hidden');
+            document.getElementById('step5-container').classList.add('hidden');
+            document.getElementById('step6-container').classList.add('hidden');
+
+            for(let i=1; i<=6; i++) {
+                const ind = document.getElementById(`step${i}-indicator`);
+                if(ind) ind.className = 'p-2 rounded-lg bg-slate-100 text-slate-400 transition cursor-pointer';
+            }
+
+            document.getElementById(`step${stepNumber}-container`).classList.remove('hidden');
+            const activeInd = document.getElementById(`step${stepNumber}-indicator`);
+            if(activeInd) activeInd.className = 'p-2 rounded-lg bg-amber-600 text-white transition cursor-pointer';
+
+            if(stepNumber === 1) {
+                renderBoardInputs();
+            } else if(stepNumber === 2) {
+                updateBoardSelect();
+                const board = getCurrentProject().boards.find(b => b.id === getCurrentProject().activeBoardId);
+                const dir = document.querySelector('input[name="cut-dir"]:checked').value;
+                if(board) {
+                    document.getElementById('cut-start-input').value = 0;
+                    document.getElementById('cut-end-input').value = (dir === 'v' ? board.width : board.length);
+                }
+                drawBoard();
+            } else if(stepNumber === 3) {
+                generateParts();
+            } else if(stepNumber === 4) {
+                renderSummaryView();
+            } else if(stepNumber === 5) {
+                initAssembly3D();
+            } else if(stepNumber === 6) {
+                renderPdfStepComment();
+            }
+        }
+
+        function goToStep2() {
+            const project = getCurrentProject();
+            if(!project || project.boards.length === 0) {
+                showAlert('少なくとも1枚の板材を設定してください。');
+                return;
+            }
+            switchStep(2);
+        }
+
+        function backToStep1() { switchStep(1); }
+        function backToStep2() { switchStep(2); }
+        function backToStep3() { switchStep(3); }
+        function backToStep4() { switchStep(4); }
+
+        function goToStep3() { switchStep(3); }
+        function goToAssembly() { switchStep(5); }
+        function goToStep6() { switchStep(6); }
+
+        // --- ステップ①：板材入力 (名称・長さ・幅・厚さ) ---
+        function renderBoardInputs() {
+            const project = getCurrentProject();
+            if(!project) return;
+
+            const container = document.getElementById('boards-list');
+            container.innerHTML = '';
+
+            project.boards.forEach((board) => {
+                const div = document.createElement('div');
+                div.className = 'grid grid-cols-1 sm:grid-cols-4 gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl items-center relative';
+                div.innerHTML = `
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">名称</label>
+                        <input type="text" value="${board.name}" onchange="updateBoardProp(${board.id}, 'name', this.value)" class="w-full p-2 bg-white border border-slate-300 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">長さ (mm)</label>
+                        <input type="number" value="${board.length}" min="10" onchange="updateBoardProp(${board.id}, 'length', Number(this.value))" class="w-full p-2 bg-white border border-slate-300 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 mb-1">幅 (mm)</label>
+                        <input type="number" value="${board.width}" min="10" onchange="updateBoardProp(${board.id}, 'width', Number(this.value))" class="w-full p-2 bg-white border border-slate-300 rounded-lg text-sm">
+                    </div>
+                    <div class="flex items-end gap-2">
+                        <div class="flex-1">
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">厚さ (mm)</label>
+                            <input type="number" value="${board.thickness}" min="1" onchange="updateBoardProp(${board.id}, 'thickness', Number(this.value))" class="w-full p-2 bg-white border border-slate-300 rounded-lg text-sm">
+                        </div>
+                        <button onclick="removeBoard(${board.id})" class="text-rose-500 hover:text-rose-700 p-2 font-bold text-lg mb-0.5" title="削除">🗑️</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function addBoardInput() {
+            const project = getCurrentProject();
+            if(!project) return;
+
+            const newId = project.boards.length > 0 ? Math.max(...project.boards.map(b => b.id)) + 1 : 1;
+            project.boards.push({ id: newId, name: `板材 ${newId}`, length: 400, width: 200, thickness: 12, cuts: [] });
+            renderBoardInputs();
+            saveCurrentProject();
+        }
+
+        function removeBoard(id) {
+            const project = getCurrentProject();
+            if(!project) return;
+
+            project.boards = project.boards.filter(b => b.id !== id);
+            renderBoardInputs();
+            saveCurrentProject();
+        }
+
+        function updateBoardProp(id, prop, val) {
+            const project = getCurrentProject();
+            if(!project) return;
+
+            const b = project.boards.find(item => item.id === id);
+            if(b) {
+                b[prop] = val;
+                saveCurrentProject();
+            }
+        }
+
+        // --- ステップ②：けがき・切断 ---
+        function updateBoardSelect() {
+            const project = getCurrentProject();
+            if(!project) return;
+
+            const select = document.getElementById('active-board-select');
+            select.innerHTML = '';
+            project.boards.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.id;
+                opt.textContent = `${b.name} (長さ:${b.length}mm × 幅:${b.width}mm)`;
+                if(b.id === project.activeBoardId) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
+        function switchActiveBoard() {
+            const project = getCurrentProject();
+            if(!project) return;
+
+            const select = document.getElementById('active-board-select');
+            project.activeBoardId = Number(select.value);
+            
+            const board = project.boards.find(b => b.id === project.activeBoardId);
+            const dir = document.querySelector('input[name="cut-dir"]:checked').value;
+            if(board) {
+                document.getElementById('cut-start-input').value = 0;
+                document.getElementById('cut-end-input').value = (dir === 'v' ? board.width : board.length);
+            }
+            drawBoard();
+        }
+
+        function addPartialCutLine() {
+            const project = getCurrentProject();
+            if(!project) return;
+
+            const board = project.boards.find(b => b.id === project.activeBoardId);
+            if(!board) return;
+
+            const dir = document.querySelector('input[name="cut-dir"]:checked').value;
+            const coord = Number(document.getElementById('cut-coord-input').value);
+            const start = Number(document.getElementById('cut-start-input').value);
+            const end = Number(document.getElementById('cut-end-input').value);
+
+            if(isNaN(coord) || coord < 0) {
+                showAlert('有効な切断位置座標を入力してください。');
+                return;
+            }
+            if(isNaN(start) || isNaN(end) || start >= end) {
+                showAlert('有効な開始・終了位置を指定してください（開始 < 終了）。');
+                return;
+            }
+
+            if(dir === 'v') {
+                if(coord > board.length) {
+                    showAlert('指定位置が板の長さを超えています。');
+                    return;
+                }
+                if(end > board.width) {
+                    showAlert('終了位置が板の幅を超えています。');
+                    return;
+                }
+            } else {
+                if(coord > board.width) {
+                    showAlert('指定位置が板の幅を超えています。');
+                    return;
+                }
+                if(end > board.length) {
+                    showAlert('終了位置が板の長さを超えています。');
+                    return;
+                }
+            }
+
+            if(!board.cuts) board.cuts = [];
+            board.cuts.push({ dir, coord, start, end });
+            
+            saveCurrentProject();
+            drawBoard();
+            showAlert('切断線（けがき）を追加し保存しました。', 'success');
+        }
+
+        function resetCutsForCurrentBoard() {
+            const project = getCurrentProject();
+            if(!project) return;
+            const board = project.boards.find(b => b.id === project.activeBoardId);
+            if(!board) return;
+            board.cuts = [];
+            saveCurrentProject();
+            drawBoard();
+        }
+
+        function drawBoard(targetSvgId = 'board-svg', targetBoard = null) {
+            const project = getCurrentProject();
+            if(!project) return;
+
+            const board = targetBoard || project.boards.find(b => b.id === project.activeBoardId);
+            const svg = document.getElementById(targetSvgId);
+            if(!svg) return;
+            
+            if(targetSvgId === 'board-svg') {
+                const info = document.getElementById('board-dimension-info');
+                if(board && info) {
+                    info.textContent = `板の元の大きさ - 長さ(横): ${board.length}mm × 幅(縦): ${board.width}mm (厚さ: ${board.thickness}mm)`;
+                }
+            }
+            if(!board) return;
+
+            const svgW = 600, svgH = 450;
+            const padding = 70;
+            const drawW = svgW - padding * 2;
+            const drawH = svgH - padding * 2;
+
+            // 複数ボードがある場合もすべてのボードの最大寸法基準でスケール統一
+            const maxL = Math.max(...project.boards.map(b => b.length), 100);
+            const maxW = Math.max(...project.boards.map(b => b.width), 100);
+
+            const scaleX = drawW / maxL;
+            const scaleY = drawH / maxW;
+            const scale = Math.min(scaleX, scaleY);
+
+            const realW = board.length * scale;
+            const realH = board.width * scale;
+            const startX = (svgW - realW) / 2;
+            const startY = (svgH - realH) / 2;
+
+            let svgContent = '';
+
+            const dimLineY = startY - 25;
+            svgContent += `
+                <line x1="${startX}" y1="${startY}" x2="${startX}" y2="${dimLineY - 5}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2,2"/>
+                <line x1="${startX + realW}" y1="${startY}" x2="${startX + realW}" y2="${dimLineY - 5}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2,2"/>
+                <line x1="${startX}" y1="${dimLineY}" x2="${startX + realW}" y2="${dimLineY}" stroke="#334155" stroke-width="1.5"/>
+                <polygon points="${startX},${dimLineY} ${startX+8},${dimLineY-3} ${startX+8},${dimLineY+3}" fill="#334155"/>
+                <polygon points="${startX+realW},${dimLineY} ${startX+realW-8},${dimLineY-3} ${startX+realW-8},${dimLineY+3}" fill="#334155"/>
+                <rect x="${startX + realW/2 - 35}" y="${dimLineY - 12}" width="70" height="16" fill="#fef3c7" rx="2"/>
+                <text x="${startX + realW/2}" y="${dimLineY}" font-size="12" font-weight="bold" fill="#78350f" text-anchor="middle">${board.length} mm</text>
+            `;
+
+            const dimLineX = startX - 35;
+            svgContent += `
+                <line x1="${startX}" y1="${startY}" x2="${dimLineX - 5}" y2="${startY}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2,2"/>
+                <line x1="${startX}" y1="${startY + realH}" x2="${dimLineX - 5}" y2="${startY + realH}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2,2"/>
+                <line x1="${dimLineX}" y1="${startY}" x2="${dimLineX}" y2="${startY + realH}" stroke="#334155" stroke-width="1.5"/>
+                <polygon points="${dimLineX},${startY} ${dimLineX-3},${startY+8} ${dimLineX+3},${startY+8}" fill="#334155"/>
+                <polygon points="${dimLineX},${startY+realH} ${dimLineX-3},${startY+realH-8} ${dimLineX+3},${startY+realH-8}" fill="#334155"/>
+                <rect x="${dimLineX - 22}" y="${startY + realH/2 - 10}" width="44" height="20" fill="#fef3c7" rx="2"/>
+                <text x="${dimLineX}" y="${startY + realH/2 + 4}" font-size="12" font-weight="bold" fill="#78350f" text-anchor="middle">${board.width}</text>
+            `;
+
+            svgContent += `<rect x="${startX}" y="${startY}" width="${realW}" height="${realH}" fill="#fef3c7" stroke="#78350f" stroke-width="3" rx="1"/>`;
+
+            if(board.cuts) {
+                board.cuts.forEach(cut => {
+                    if(cut.dir === 'v') {
+                        const x = startX + cut.coord * scale;
+                        const y1 = startY + cut.start * scale;
+                        const y2 = startY + cut.end * scale;
+
+                        svgContent += `<line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="5,3"/>`;
+                        svgContent += `<circle cx="${x}" cy="${y1}" r="3.5" fill="#ef4444"/><circle cx="${x}" cy="${y2}" r="3.5" fill="#ef4444"/>`;
+
+                        const leftDist = cut.coord;
+                        const rightDist = board.length - cut.coord;
+
+                        svgContent += `
+                            <line x1="${startX}" y1="${y2 + 15}" x2="${x}" y2="${y2 + 15}" stroke="#b91c1c" stroke-width="1"/>
+                            <text x="${(startX + x)/2}" y="${y2 + 12}" font-size="10" font-weight="bold" fill="#b91c1c" text-anchor="middle">${leftDist}mm</text>
+                        `;
+                        svgContent += `
+                            <line x1="${x}" y1="${y2 + 15}" x2="${startX + realW}" y2="${y2 + 15}" stroke="#b91c1c" stroke-width="1"/>
+                            <text x="${(x + startX + realW)/2}" y="${y2 + 12}" font-size="10" font-weight="bold" fill="#b91c1c" text-anchor="middle">${rightDist}mm</text>
+                        `;
+                    } else {
+                        const y = startY + cut.coord * scale;
+                        const x1 = startX + cut.start * scale;
+                        const x2 = startX + cut.end * scale;
+
+                        svgContent += `<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="5,3"/>`;
+                        svgContent += `<circle cx="${x1}" cy="${y}" r="3.5" fill="#ef4444"/><circle cx="${x2}" cy="${y}" r="3.5" fill="#ef4444"/>`;
+
+                        const topDist = cut.coord;
+                        const bottomDist = board.width - cut.coord;
+
+                        svgContent += `
+                            <line x1="${x2 + 15}" y1="${startY}" x2="${x2 + 15}" y2="${y}" stroke="#b91c1c" stroke-width="1"/>
+                            <text x="${x2 + 25}" y="${(startY + y)/2 + 3}" font-size="10" font-weight="bold" fill="#b91c1c" text-anchor="start">${topDist}mm</text>
+                        `;
+                        svgContent += `
+                            <line x1="${x2 + 15}" y1="${y}" x2="${x2 + 15}" y2="${startY + realH}" stroke="#b91c1c" stroke-width="1"/>
+                            <text x="${x2 + 25}" y="${(y + startY + realH)/2 + 3}" font-size="10" font-weight="bold" fill="#b91c1c" text-anchor="start">${bottomDist}mm</text>
+                        `;
+                    }
+                });
+            }
+
+            svg.innerHTML = svgContent;
+        }
+
+        // --- ステップ③：部品名・不要パーツ設定 ---
+        function generateParts() {
+            const project = getCurrentProject();
+            if(!project) return;
+
+            let newParts = [];
+            let partIdCounter = 1;
+
+            project.boards.forEach(board => {
+                const cuts = board.cuts || [];
+                
+                let vCoords = [0, board.length];
+                cuts.filter(c => c.dir === 'v').forEach(c => {
+                    if(!vCoords.includes(c.coord)) vCoords.push(c.coord);
+                });
+                vCoords.sort((a, b) => a - b);
+
+                let hCoords = [0, board.width];
+                cuts.filter(c => c.dir === 'h').forEach(c => {
+                    if(!hCoords.includes(c.coord)) hCoords.push(c.coord);
+                });
+                hCoords.sort((a, b) => a - b);
+
+                for(let i = 0; i < vCoords.length - 1; i++) {
+                    for(let j = 0; j < hCoords.length - 1; j++) {
+                        const x1 = vCoords[i];
+                        const x2 = vCoords[i+1];
+                        const y1 = hCoords[j];
+                        const y2 = hCoords[j+1];
+
+                        const pLength = x2 - x1;
+                        const pWidth = y2 - y1;
+
+                        if(pLength > 0 && pWidth > 0) {
+                            const matched = project.parts ? project.parts.find(p => p.boardName === board.name && Math.abs(p.length - pLength) < 1 && Math.abs(p.width - pWidth) < 1) : null;
+
+                            newParts.push({
+                                id: partIdCounter++,
+                                boardName: board.name,
+                                length: pLength,
+                                width: pWidth,
+                                thickness: board.thickness,
+                                name: matched ? matched.name : '',
+                                excluded: matched ? matched.excluded : false
+                            });
+                        }
+                    }
+                }
+            });
+
+            project.parts = newParts;
+            saveCurrentProject();
+            renderPartsConfig();
+        }
+
+        function renderPartsConfig() {
+            const project = getCurrentProject();
+            if(!project) return;
+
+            const grid = document.getElementById('parts-config-grid');
+            grid.innerHTML = '';
+
+            if(project.parts.length === 0) {
+                grid.innerHTML = `<p class="text-sm text-slate-500 col-span-full">登録されたパーツがありません。板に切断線を追加してください。</p>`;
+                return;
+            }
+
+            project.parts.forEach((part, index) => {
+                const card = document.createElement('div');
+                card.className = `p-4 rounded-xl border flex flex-col gap-3 transition ${part.excluded ? 'bg-slate-100 border-slate-300 opacity-60' : 'bg-slate-50 border-amber-200 shadow-sm'}`;
+                
+                const maxPreviewW = 180;
+                const maxPreviewH = 100;
+                const scale = Math.min(maxPreviewW / part.length, maxPreviewH / part.width);
+                const rectW = part.length * scale;
+                const rectH = part.width * scale;
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded">パーツ #${index + 1} (${part.boardName})</span>
+                        <label class="flex items-center gap-1.5 text-xs text-rose-600 font-semibold cursor-pointer">
+                            <input type="checkbox" ${part.excluded ? 'checked' : ''} onchange="toggleExcludePart(${part.id})" class="rounded text-rose-600">
+                            不要パーツにする
+                        </label>
+                    </div>
+
+                    <div class="bg-amber-50/60 border border-amber-200 rounded-lg p-2 flex items-center justify-center h-28 relative overflow-hidden">
+                        <svg width="200" height="110" viewBox="0 0 200 110" class="max-h-full">
+                            <rect x="${(200 - rectW)/2}" y="${(110 - rectH)/2}" width="${rectW}" height="${rectH}" fill="#fef3c7" stroke="#78350f" stroke-width="2" rx="1"/>
+                            <text x="100" y="55" font-size="10" fill="#78350f" font-weight="bold" text-anchor="middle" dominant-baseline="middle">${part.length} × ${part.width} mm</text>
+                        </svg>
+                        <span class="absolute bottom-1 right-2 text-[10px] text-slate-400">厚さ: ${part.thickness}mm</span>
+                    </div>
+
+                    <div class="flex flex-col gap-1">
+                        <label class="block text-xs font-semibold text-slate-600">部品名を入力:</label>
+                        <input type="text" value="${part.name}" ${part.excluded ? 'disabled' : ''} placeholder="例: 側板、底板など" onchange="updatePartName(${part.id}, this.value)" class="w-full p-2 bg-white border border-slate-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-amber-500">
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function updatePartName(id, val) {
+            const project = getCurrentProject();
+            if(!project) return;
+
+            const p = project.parts.find(item => item.id === id);
+            if(p) {
+                p.name = val;
+                saveCurrentProject();
+            }
+        }
+
+        function toggleExcludePart(id) {
+            const project = getCurrentProject();
+            if(!project) return;
+
+            const p = project.parts.find(item => item.id === id);
+            if(p) {
+                p.excluded = !p.excluded;
+                saveCurrentProject();
+                renderPartsConfig();
+            }
+        }
+
+        function confirmAndSaveStep3() {
+            saveCurrentProject();
+            switchStep(4);
+        }
+
+        // --- ステップ④：材料取図の一覧確認 ---
+        function renderSummaryView() {
+            const project = getCurrentProject();
+            if(!project) return;
+
+            const boardsContainer = document.getElementById('summary-boards-container');
+            boardsContainer.innerHTML = '';
+
+            project.boards.forEach((board, index) => {
+                const card = document.createElement('div');
+                card.className = 'bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-col gap-3 shadow-sm';
+                card.innerHTML = `
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <h4 class="font-bold text-amber-900 text-sm">材料 #${index + 1}: ${board.name}</h4>
+                        <span class="text-xs text-slate-500">長さ:${board.length}mm × 幅:${board.width}mm (厚:${board.thickness}mm)</span>
+                    </div>
+                    <div class="bg-slate-900 rounded-lg p-2 flex items-center justify-center overflow-hidden">
+                        <svg id="summary-board-svg-${board.id}" class="w-full max-h-[300px] bg-amber-100 rounded border border-amber-900" viewBox="0 0 600 450"></svg>
+                    </div>
+                `;
+                boardsContainer.appendChild(card);
+
+                setTimeout(() => {
+                    drawBoard(`summary-board-svg-${board.id}`, board);
+                }, 50);
+            });
+
+            const tbody = document.getElementById('summary-parts-tbody');
+            tbody.innerHTML = '';
+
+            if(!project.parts || project.parts.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">登録された部品はありません。</td></tr>`;
+                return;
+            }
+
+            project.parts.forEach((part, index) => {
+                const tr = document.createElement('tr');
+                tr.className = part.excluded ? 'bg-slate-100 text-slate-400' : 'bg-white hover:bg-slate-50';
+                tr.innerHTML = `
+                    <td class="p-3 border border-slate-200 font-bold text-slate-700">#${index + 1}</td>
+                    <td class="p-3 border border-slate-200 text-slate-600">${part.boardName}</td>
+                    <td class="p-3 border border-slate-200 font-bold text-amber-900">${part.name || '<span class="text-slate-400 font-normal">（名称未入力）</span>'}</td>
+                    <td class="p-3 border border-slate-200">${part.length}</td>
+                    <td class="p-3 border border-slate-200">${part.width}</td>
+                    <td class="p-3 border border-slate-200">${part.thickness}</td>
+                    <td class="p-3 border border-slate-200">
+                        ${part.excluded ? '<span class="text-xs bg-rose-100 text-rose-700 px-2 py-1 rounded font-semibold">不要パーツ（除外）</span>' : '<span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-semibold">使用パーツ</span>'}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- ステップ⑤：3D組立シミュレーション (Three.js) ---
+        function initAssembly3D() {
+            const container = document.getElementById('three-canvas-container');
+            container.innerHTML = '';
+
+            const width = container.clientWidth || 600;
+            const height = 500;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a);
+
+            camera = new THREE.PerspectiveCamera(45, width / height, 1, 5000);
+            camera.position.set(250, 200, 350);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(300, 500, 400);
+            scene.add(dirLight);
+
+            const axesHelper = new THREE.AxesHelper(300);
+            scene.add(axesHelper);
+
+            const gridHelper = new THREE.GridHelper(800, 20, 0x475569, 0x334155);
+            gridHelper.position.y = -0.5;
+            scene.add(gridHelper);
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+
+            renderer.domElement.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+
+                const rect = renderer.domElement.getBoundingClientRect();
+                mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(assembledMeshes);
+
+                if(intersects.length > 0) {
+                    selectMesh(intersects[0].object);
+                }
+            });
+
+            renderer.domElement.addEventListener('mousemove', (e) => {
+                if(!isDragging) return;
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+
+                scene.rotation.y += deltaX * 0.008;
+                camera.position.y = Math.max(-200, Math.min(600, camera.position.y + deltaY * 0.8));
+
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mouseup', () => { isDragging = false; });
+
+            // マスポインタ位置を中心としたズーム
+            renderer.domElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const rect = renderer.domElement.getBoundingClientRect();
+                const mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                const mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+                const zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
+                camera.position.x *= zoomFactor;
+                camera.position.y *= zoomFactor;
+                camera.position.z *= zoomFactor;
+
+                camera.position.x = Math.max(-1500, Math.min(1500, camera.position.x));
+                camera.position.y = Math.max(-500, Math.min(1500, camera.position.y));
+                camera.position.z = Math.max(50, Math.min(2000, camera.position.z));
+            }, { passive: false });
+
+            renderAssemblyPalette();
+            loadAssemblyScene();
+            animate3D();
+        }
+
+        function renderAssemblyPalette() {
+            const project = getCurrentProject();
+            if(!project) return;
+
+            const palette = document.getElementById('assembly-parts-palette');
+            palette.innerHTML = '';
+
+            const validParts = (project.parts || []).filter(p => !p.excluded);
+
+            if(validParts.length === 0) {
+                palette.innerHTML = `<p class="text-xs text-slate-400">使用可能な部品がありません。</p>`;
+                return;
+            }
+
+            validParts.forEach((part) => {
+                const btn = document.createElement('button');
+                btn.className = 'bg-white border border-slate-200 hover:border-amber-500 p-2.5 rounded-lg text-left flex justify-between items-center transition shadow-sm';
+                btn.innerHTML = `
+                    <div>
+                        <span class="text-xs font-bold text-amber-900 block">${part.name || '（名称未入力）'}</span>
+                        <span class="text-[10px] text-slate-500">${part.length} × ${part.width} × ${part.thickness} mm</span>
+                    </div>
+                    <span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded font-bold">+ 配置</span>
+                `;
+                btn.onclick = () => addPartToScene(part);
+                palette.appendChild(btn);
+            });
+        }
+
+        function addPartToScene(partData) {
+            const geom = new THREE.BoxGeometry(partData.length, partData.thickness, partData.width);
+            const material = new THREE.MeshStandardMaterial({
+                color: 0xdeb887,
+                roughness: 0.6,
+                metalness: 0.1
+            });
+
+            const mesh = new THREE.Mesh(geom, material);
+            mesh.position.set(0, partData.thickness / 2, 0);
+
+            const edges = new THREE.EdgesGeometry(geom);
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x5c3a21 }));
+            mesh.add(line);
+
+            mesh.userData = {
+                partId: partData.id,
+                name: partData.name || '部品',
+                length: partData.length,
+                width: partData.width,
+                thickness: partData.thickness
+            };
+
+            scene.add(mesh);
+            assembledMeshes.push(mesh);
+            selectMesh(mesh);
+            saveAssemblyScene();
+        }
+
+        function loadAssemblyScene() {
+            assembledMeshes = [];
+            const project = getCurrentProject();
+            if(!project || !project.assemblyParts) return;
+
+            project.assemblyParts.forEach(data => {
+                const geom = new THREE.BoxGeometry(data.length, data.thickness, data.width);
+                const material = new THREE.MeshStandardMaterial({ color: 0xdeb887, roughness: 0.6 });
+                const mesh = new THREE.Mesh(geom, material);
+                mesh.position.set(data.posX, data.posY, data.posZ);
+                mesh.rotation.set(data.rotX, data.rotY, data.rotZ);
+
+                const edges = new THREE.EdgesGeometry(geom);
+                const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x5c3a21 }));
+                mesh.add(line);
+
+                mesh.userData = data.userData;
+                scene.add(mesh);
+                assembledMeshes.push(mesh);
+            });
+        }
+
+        function saveAssemblyScene() {
+            const project = getCurrentProject();
+            if(!project) return;
+
+            project.assemblyParts = assembledMeshes.map(mesh => ({
+                length: mesh.userData.length,
+                width: mesh.userData.width,
+                thickness: mesh.userData.thickness,
+                posX: mesh.position.x,
+                posY: mesh.position.y,
+                posZ: mesh.position.z,
+                rotX: mesh.rotation.x,
+                rotY: mesh.rotation.y,
+                rotZ: mesh.rotation.z,
+                userData: mesh.userData
+            }));
+            saveCurrentProject();
+        }
+
+        function selectMesh(mesh) {
+            if(selectedMesh && selectedMesh.material) {
+                selectedMesh.material.emissive.setHex(0x000000);
+            }
+            selectedMesh = mesh;
+            if(selectedMesh && selectedMesh.material) {
+                selectedMesh.material.emissive.setHex(0x332211);
+                document.getElementById('current-selected-part-name').textContent = `選択中: ${selectedMesh.userData.name} (${selectedMesh.userData.length}×${selectedMesh.userData.width}mm)`;
+            }
+        }
+
+        function rotateSelectedPart(axis, angleDeg) {
+            if(!selectedMesh) {
+                showAlert('回転させる部品を3D画面上でクリックして選択してください。');
+                return;
+            }
+            const rad = THREE.MathUtils.degToRad(angleDeg);
+            if(axis === 'x') selectedMesh.rotation.x += rad;
+            if(axis === 'y') selectedMesh.rotation.y += rad;
+            if(axis === 'z') selectedMesh.rotation.z += rad;
+            saveAssemblyScene();
+        }
+
+        function moveSelectedPart(axis, delta) {
+            if(!selectedMesh) {
+                showAlert('移動させる部品を3D画面上でクリックして選択してください。');
+                return;
+            }
+            if(axis === 'x') selectedMesh.position.x += delta;
+            if(axis === 'y') selectedMesh.position.y += delta;
+            if(axis === 'z') selectedMesh.position.z += delta;
+            saveAssemblyScene();
+        }
+
+        function removeSelectedPartFromScene() {
+            if(!selectedMesh) return;
+            scene.remove(selectedMesh);
+            assembledMeshes = assembledMeshes.filter(m => m !== selectedMesh);
+            selectedMesh = null;
+            document.getElementById('current-selected-part-name').textContent = '選択中の部品: なし';
+            saveAssemblyScene();
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            if(renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }
+
+        // --- ステップ⑥：PDF出力・コメント ---
+        function updateProjectComment(val) {
+            const p = getCurrentProject();
+            if(p) {
+                p.comment = val;
+                saveCurrentProject();
+            }
+        }
+
+        function renderPdfStepComment() {
+            const p = getCurrentProject();
+            if(p && p.comment) {
+                document.getElementById('pdf-comment-input').value = p.comment;
+            } else {
+                document.getElementById('pdf-comment-input').value = '';
+            }
+        }
+
+        function openPdfLayoutModal() {
+            const project = getCurrentProject();
+            if(!project) return;
+
+            document.getElementById('pdf-modal-title').textContent = project.title;
+            document.getElementById('pdf-modal-date').textContent = new Date().toLocaleDateString('ja-JP');
+            document.getElementById('pdf-modal-comment-display').textContent = project.comment || '（コメント未入力）';
+
+            // パーツ表構築
+            const tbody = document.getElementById('pdf-modal-parts-tbody');
+            tbody.innerHTML = '';
+            if(!project.parts || project.parts.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-2 text-center text-slate-400">部品なし</td></tr>`;
+            } else {
+                project.parts.forEach((part, index) => {
+                    if(!part.excluded) {
+                        const tr = document.createElement('tr');
+                        tr.className = 'border-b';
+                        tr.innerHTML = `
+                            <td class="p-1.5 border font-bold">#${index+1}</td>
+                            <td class="p-1.5 border">${part.boardName}</td>
+                            <td class="p-1.5 border font-bold text-amber-900">${part.name || '（未入力）'}</td>
+                            <td class="p-1.5 border">${part.length}</td>
+                            <td class="p-1.5 border">${part.width}</td>
+                            <td class="p-1.5 border">${part.thickness}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    }
+                });
+            }
+
+            // 材料取図ボード一覧構築
+            const boardsCont = document.getElementById('pdf-modal-boards-container');
+            boardsCont.innerHTML = '';
+            project.boards.forEach((board, index) => {
+                const div = document.createElement('div');
+                div.className = 'bg-slate-50 border p-2 rounded-lg flex flex-col gap-1';
+                div.innerHTML = `
+                    <span class="text-[11px] font-bold text-amber-900">材料 #${index+1}: ${board.name} (${board.length}×${board.width}mm)</span>
+                    <svg id="pdf-board-svg-${board.id}" class="w-full h-32 bg-amber-100 rounded border" viewBox="0 0 600 450"></svg>
+                `;
+                boardsCont.appendChild(div);
+                setTimeout(() => { drawBoard(`pdf-board-svg-${board.id}`, board); }, 50);
+            });
+
+            // 等角投影図 (Isometric View) の描画（背景を白色に設定）
+            const isoContainer = document.getElementById('pdf-isometric-canvas-container');
+            isoContainer.innerHTML = '';
+            
+            const isoW = isoContainer.clientWidth || 450;
+            const isoH = 320;
+            const isoScene = new THREE.Scene();
+            isoScene.background = new THREE.Color(0xffffff); // 背景を白に設定
+
+            // 等角投影カメラ設定 (Isometric angle)
+            const isoCamera = new THREE.PerspectiveCamera(30, isoW / isoH, 1, 5000);
+            isoCamera.position.set(400, 350, 400);
+            isoCamera.lookAt(0, 0, 0);
+
+            const isoRenderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+            isoRenderer.setSize(isoW, isoH);
+            isoContainer.appendChild(isoRenderer.domElement);
+
+            const ambLight = new THREE.AmbientLight(0xffffff, 0.8);
+            isoScene.add(ambLight);
+            const dLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            dLight.position.set(300, 500, 400);
+            isoScene.add(dLight);
+
+            // 保存された3D組立パーツを等角図に反映
+            if(project.assemblyParts && project.assemblyParts.length > 0) {
+                project.assemblyParts.forEach(data => {
+                    const geom = new THREE.BoxGeometry(data.length, data.thickness, data.width);
+                    const mat = new THREE.MeshStandardMaterial({ color: 0xdeb887, roughness: 0.6 });
+                    const m = new THREE.Mesh(geom, mat);
+                    m.position.set(data.posX, data.posY, data.posZ);
+                    m.rotation.set(data.rotX, data.rotY, data.rotZ);
+
+                    const edges = new THREE.EdgesGeometry(geom);
+                    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x5c3a21 }));
+                    m.add(line);
+                    isoScene.add(m);
+                });
+            } else {
+                // サンプル用キューブ
+                const geom = new THREE.BoxGeometry(100, 12, 100);
+                const mat = new THREE.MeshStandardMaterial({ color: 0xdeb887 });
+                const m = new THREE.Mesh(geom, mat);
+                isoScene.add(m);
+            }
+
+            isoRenderer.render(isoScene, isoCamera);
+
+            document.getElementById('pdf-layout-modal').classList.remove('hidden');
+        }
+
+        function closePdfLayoutModal() {
+            document.getElementById('pdf-layout-modal').classList.add('hidden');
+        }
+
+        function downloadPdfLayout() {
+            // PDF保存ボタン：印刷ダイアログ（PDFとして保存を選択可能）を実行
+            window.print();
+        }
+    </script>
+</body>
+</html>
