@@ -44,7 +44,7 @@
             }
             #pdf-preview-sheet {
                 background: white !important;
-                padding: 5mm !important;
+                padding: 4mm !important;
                 overflow: visible !important;
                 display: block !important;
             }
@@ -54,7 +54,7 @@
                 height: 100vh !important;
                 box-shadow: none !important;
                 border: none !important;
-                padding: 10px !important;
+                padding: 6px !important;
                 page-break-after: avoid;
                 page-break-before: avoid;
                 transform: scale(1.0);
@@ -104,7 +104,7 @@
         </section>
 
         <!-- ────────────────────────────────────────────── -->
-        <!-- シミュレーション作業画面（ステップ①〜⑤） -->
+        <!-- シミュレーション作業画面（ステップ①〜⑥） -->
         <!-- ────────────────────────────────────────────── -->
         <section id="view-simulator" class="hidden flex flex-col gap-6">
             <!-- プロジェクト名変更バー -->
@@ -114,15 +114,16 @@
             </div>
 
             <!-- ステップナビゲーション -->
-            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 bg-white p-3 rounded-2xl shadow-sm border border-slate-200 text-center text-xs font-bold">
+            <div class="grid grid-cols-2 sm:grid-cols-6 gap-2 bg-white p-3 rounded-2xl shadow-sm border border-slate-200 text-center text-xs font-bold">
                 <div onclick="switchStep(1)" id="step1-indicator" class="p-2 rounded-lg bg-amber-600 text-white transition cursor-pointer">① 板材の設定</div>
                 <div onclick="switchStep(2)" id="step2-indicator" class="p-2 rounded-lg bg-slate-100 text-slate-400 transition cursor-pointer">② けがき・切断</div>
                 <div onclick="switchStep(3)" id="step3-indicator" class="p-2 rounded-lg bg-slate-100 text-slate-400 transition cursor-pointer">③ 部品名・不要パーツ</div>
                 <div onclick="switchStep(4)" id="step4-indicator" class="p-2 rounded-lg bg-slate-100 text-slate-400 transition cursor-pointer">④ 材料取図一覧</div>
-                <div onclick="switchStep(5)" id="step5-indicator" class="p-2 rounded-lg bg-slate-100 text-slate-400 transition cursor-pointer col-span-2 sm:col-span-1">⑤ 3D組立</div>
+                <div onclick="switchStep(5)" id="step5-indicator" class="p-2 rounded-lg bg-slate-100 text-slate-400 transition cursor-pointer">⑤ 3D組立</div>
+                <div onclick="switchStep(6)" id="step6-indicator" class="p-2 rounded-lg bg-slate-100 text-slate-400 transition cursor-pointer">⑥ PDF出力</div>
             </div>
 
-            <!-- ステップ①：板材の設定 -->
+            <!-- ステップ①：板材の設定 (名称・長さ・幅・厚さ) -->
             <div id="step1-container" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col gap-6">
                 <div class="border-b pb-3">
                     <h2 class="text-lg font-bold text-amber-900">① 板材の設定</h2>
@@ -146,7 +147,7 @@
                 <div class="border-b pb-3 flex justify-between items-center">
                     <div>
                         <h2 class="text-lg font-bold text-amber-900">② けがき・切断の線引</h2>
-                        <p class="text-sm text-slate-500">板を選択し、縦切断または横切断の線を任意の位置や範囲で引き、切断線を決定します。</p>
+                        <p class="text-sm text-slate-500">板を選択し、縦切断（幅方向）または横切断（長さ方向）の線を任意の範囲で引きます。</p>
                     </div>
                     <button onclick="backToStep1()" class="text-sm text-amber-800 hover:underline">← 板材設定に戻る</button>
                 </div>
@@ -162,16 +163,16 @@
                             <label class="block text-xs font-bold text-slate-600">切断方向:</label>
                             <div class="grid grid-cols-2 gap-2">
                                 <label class="flex items-center gap-2 bg-white p-2.5 border rounded-lg cursor-pointer text-sm font-medium">
-                                    <input type="radio" name="cut-dir" value="v" checked class="text-amber-600"> 縦切断 (幅方向)
+                                    <input type="radio" name="cut-dir" value="v" checked class="text-amber-600"> 縦切断 (幅に平行)
                                 </label>
                                 <label class="flex items-center gap-2 bg-white p-2.5 border rounded-lg cursor-pointer text-sm font-medium">
-                                    <input type="radio" name="cut-dir" value="h" class="text-amber-600"> 横切断 (長さ方向)
+                                    <input type="radio" name="cut-dir" value="h" class="text-amber-600"> 横切断 (長さに平行)
                                 </label>
                             </div>
                         </div>
 
                         <div class="flex flex-col gap-1.5">
-                            <label id="cut-coord-label" class="text-xs font-bold text-slate-600">位置 (長さ方向のX座標 mm):</label>
+                            <label id="cut-coord-label" class="text-xs font-bold text-slate-600">切断位置 (長さ方向のX座標 mm):</label>
                             <input type="number" id="cut-coord-input" value="100" class="w-full p-2 bg-white border border-slate-300 rounded-lg text-sm">
                         </div>
 
@@ -215,12 +216,12 @@
                 </div>
             </div>
 
-            <!-- ステップ③：部品名・不要パーツ設定 -->
+            <!-- ステップ③：部品名・不要パーツ設定 (シンプル入力＆パーツプレビュー付き) -->
             <div id="step3-container" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hidden flex flex-col gap-6">
                 <div class="border-b pb-3 flex justify-between items-center">
                     <div>
                         <h2 class="text-lg font-bold text-amber-900">③ 部品名の入力と不要パーツの除外</h2>
-                        <p class="text-sm text-slate-500">切断されて切り出された各パーツに名称（例：側板、底板など）を入力し、使わない端材にチェックを入れます。</p>
+                        <p class="text-sm text-slate-500">切り出された各パーツに名称（例：側板、底板など）を入力し、使わない端材にチェックを入れます。</p>
                     </div>
                     <button onclick="backToStep2()" class="text-sm text-amber-800 hover:underline">← けがき画面に戻る</button>
                 </div>
@@ -239,7 +240,7 @@
                 </div>
             </div>
 
-            <!-- ステップ④：材料取図の一覧確認 -->
+            <!-- ステップ④：材料取図および部品図の一覧確認 -->
             <div id="step4-container" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hidden flex flex-col gap-6">
                 <div class="border-b pb-3 flex justify-between items-center">
                     <div>
@@ -419,13 +420,13 @@
 
     </main>
 
-    <!-- A3横2段組 PDFレイアウト確認モーダル -->
+    <!-- A3横2段組 PDFレイアウト確認モーダル (提供設計図テンプレート完全準拠) -->
     <div id="pdf-layout-modal" class="fixed inset-0 bg-black/70 hidden flex items-center justify-center p-4 z-50 overflow-auto">
         <div class="bg-white rounded-2xl w-full max-w-7xl max-h-[96vh] flex flex-col shadow-2xl overflow-hidden">
             <div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center print:hidden">
                 <div class="flex items-center gap-3">
                     <span class="text-xl">📄</span>
-                    <h3 class="font-bold text-base">A3横 2段組 PDFレイアウト確認 (1ページ収縮・最適化)</h3>
+                    <h3 class="font-bold text-base">A3横 2段組 PDFレイアウト確認 (設計図フォーマット準拠・1ページ最適化)</h3>
                 </div>
                 <div class="flex items-center gap-3">
                     <button onclick="downloadPdfLayout()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg text-xs transition">📥 PDFを保存 (印刷ダイアログ)</button>
@@ -434,35 +435,35 @@
             </div>
 
             <!-- A3横見立てプレビューエリア -->
-            <div id="pdf-preview-sheet" class="flex-1 overflow-y-auto p-6 bg-slate-200 flex justify-center">
-                <!-- A3用紙サイズ比率 (横長 297mm × 420mm ≒ 1200px × 760px) -->
-                <div class="bg-white w-[1200px] h-[740px] shadow-2xl p-6 flex flex-col justify-between text-slate-800 relative border border-slate-300 box-border">
+            <div id="pdf-preview-sheet" class="flex-1 overflow-y-auto p-4 bg-slate-200 flex justify-center">
+                <!-- A3用紙サイズ比率 (横長 297mm × 420mm ≒ 1200px × 740px) -->
+                <div class="bg-white w-[1200px] h-[720px] shadow-2xl p-6 flex flex-col justify-between text-slate-800 relative border border-slate-300 box-border">
                     
-                    <!-- ヘッダータイトル (シンプルにタイトルのみ大きく配置) -->
-                    <div class="border-b-2 border-amber-800 pb-2 flex justify-between items-end">
-                        <div>
-                            <span class="text-xs font-bold text-amber-700 tracking-wider">中学校技術科 木工製作レポート</span>
-                            <h1 id="pdf-modal-title" class="text-2xl font-bold text-amber-900 mt-0.5">木工製作プロジェクト</h1>
+                    <!-- ヘッダータイトル (「木材を使った製作品の設計図」＆ 作成日) -->
+                    <div class="border-b-2 border-slate-800 pb-2 flex justify-between items-end">
+                        <h1 class="text-2xl font-bold text-slate-900 tracking-wider">木材を使った製作品の設計図</h1>
+                        <div class="text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-300 px-4 py-1.5 rounded">
+                            作成日: <span>____年____月____日</span> &nbsp;&nbsp; 氏名: <span id="pdf-modal-author-name">__________________</span>
                         </div>
                     </div>
 
-                    <!-- 2段組メインコンテンツ (左右2カラム、大きく見やすく配置) -->
-                    <div class="grid grid-cols-2 gap-6 my-3 flex-1 items-start overflow-hidden">
+                    <!-- 2段組メインコンテンツ (左右2カラム、設計図PDF配置準拠) -->
+                    <div class="grid grid-cols-2 gap-6 my-2 flex-1 items-start overflow-hidden">
                         
-                        <!-- 左カラム：部品表 & 材料取図 -->
-                        <div class="flex flex-col gap-4 border-r pr-6 border-slate-200 h-full overflow-hidden">
+                        <!-- 左カラム：①部品一覧表 & 材料取図 -->
+                        <div class="flex flex-col gap-4 border-r pr-6 border-slate-300 h-full overflow-hidden">
                             <div>
-                                <h3 class="font-bold text-sm text-amber-900 border-b border-amber-200 pb-1 mb-2">📋 部品一覧表</h3>
+                                <h3 class="font-bold text-sm text-slate-900 border-b border-slate-400 pb-1 mb-2">① 部品一覧表</h3>
                                 <div class="max-h-[140px] overflow-y-auto">
-                                    <table class="w-full text-left text-xs border-collapse">
+                                    <table class="w-full text-left text-xs border-collapse border border-slate-300">
                                         <thead>
-                                            <tr class="bg-amber-100 text-amber-900">
-                                                <th class="p-2 border">#</th>
-                                                <th class="p-2 border">元板</th>
-                                                <th class="p-2 border">部品名</th>
-                                                <th class="p-2 border">長さ</th>
-                                                <th class="p-2 border">幅</th>
-                                                <th class="p-2 border">厚さ</th>
+                                            <tr class="bg-slate-100 text-slate-900">
+                                                <th class="p-1.5 border border-slate-300">#</th>
+                                                <th class="p-1.5 border border-slate-300">元板</th>
+                                                <th class="p-1.5 border border-slate-300">部品名</th>
+                                                <th class="p-1.5 border border-slate-300">長さ</th>
+                                                <th class="p-1.5 border border-slate-300">幅</th>
+                                                <th class="p-1.5 border border-slate-300">厚さ</th>
                                             </tr>
                                         </thead>
                                         <tbody id="pdf-modal-parts-tbody">
@@ -473,37 +474,37 @@
                             </div>
 
                             <div class="flex-1 flex flex-col overflow-hidden">
-                                <h3 class="font-bold text-sm text-amber-900 border-b border-amber-200 pb-1 mb-2">🪵 材料取図 (けがき切断)</h3>
-                                <!-- 高さを適切に確保しつつスクロールまたは自動調整するコンテナ -->
-                                <div id="pdf-modal-boards-container" class="flex flex-col gap-2 overflow-y-auto max-h-[300px] pr-1">
+                                <h3 class="font-bold text-sm text-slate-900 border-b border-slate-400 pb-1 mb-2">材料取図 (2, 3, 4...)</h3>
+                                <!-- 板の枚数が増えても綺麗に収まるスクロールコンテナ -->
+                                <div id="pdf-modal-boards-container" class="flex flex-col gap-2 overflow-y-auto max-h-[290px] pr-1">
                                     <!-- 動的挿入 -->
                                 </div>
                             </div>
                         </div>
 
-                        <!-- 右カラム：等角図 (3D組立) & コメント -->
-                        <div class="flex flex-col gap-4 h-full">
+                        <!-- 右カラム：③ 構想図(等角図) & ④ コメント -->
+                        <div class="flex flex-col gap-3 h-full">
                             <div>
-                                <h3 class="font-bold text-sm text-amber-900 border-b border-amber-200 pb-1 mb-2">📐 製作品 3D等角図 (アイソメトリック)</h3>
-                                <!-- 枠内に綺麗に収まりつつ、より大きく表示される3D等角図コンテナ -->
-                                <div class="bg-white rounded-xl p-2 flex flex-col items-center justify-center h-[340px] relative overflow-hidden border border-slate-300 shadow-inner">
-                                    <div id="pdf-isometric-canvas-container" class="w-full h-full flex items-center justify-center overflow-hidden rounded-lg"></div>
+                                <h3 class="font-bold text-sm text-slate-900 border-b border-slate-400 pb-1 mb-2">③ 構想図 (等角図)</h3>
+                                <!-- 枠内にはみ出さず、より大きく綺麗に表示される3D等角図コンテナ (背景白) -->
+                                <div class="bg-white rounded-xl p-2 flex flex-col items-center justify-center h-[310px] relative overflow-hidden border border-slate-300 shadow-inner">
+                                    <div id="pdf-isometric-canvas-container" class="w-full h-full flex items-center justify-center overflow-hidden rounded-lg bg-white"></div>
                                     <span class="absolute bottom-2 right-3 text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded border">等角投影表示 (Isometric View)</span>
                                 </div>
                             </div>
 
-                            <div class="bg-amber-50/60 p-3 rounded-xl border border-amber-200 flex flex-col gap-1">
-                                <h4 class="font-bold text-xs text-amber-900">💬 製作の感想・留意点メモ:</h4>
-                                <p id="pdf-modal-comment-display" class="text-xs text-slate-700 min-h-[36px] whitespace-pre-wrap leading-relaxed">（コメント未入力）</p>
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-300 flex flex-col gap-1">
+                                <h4 class="font-bold text-xs text-slate-900 border-b border-slate-200 pb-1">④ コメント (製作の感想・留意点)</h4>
+                                <p id="pdf-modal-comment-display" class="text-xs text-slate-700 min-h-[40px] whitespace-pre-wrap leading-relaxed">（コメント未入力）</p>
                             </div>
                         </div>
 
                     </div>
 
                     <!-- フッター (シンプル) -->
-                    <div class="border-t pt-2 flex justify-between items-center text-xs text-slate-400">
-                        <span>中学校技術科 木工加工シミュレーター</span>
-                        <span>A3横 1枚完結レポート</span>
+                    <div class="border-t pt-2 flex justify-between items-center text-xs text-slate-500">
+                        <span>中学校技術科 木工業製作実習</span>
+                        <span>設計図レポート (A3横1枚)</span>
                     </div>
 
                 </div>
@@ -532,7 +533,6 @@
         let scene, camera, renderer, raycaster, mouse;
         let assembledMeshes = [];
         let selectedMesh = null;
-        let controlsTarget = new THREE.Vector3(0, 0, 0);
 
         // 初期化実行
         window.onload = function() {
@@ -554,13 +554,13 @@
                     const endInput = document.getElementById('cut-end-input');
 
                     if(e.target.value === 'v') {
-                        coordLabel.textContent = '位置 (長さ方向のX座標 mm):';
+                        coordLabel.textContent = '切断位置 (長さ方向のX座標 mm):';
                         startLabel.textContent = '開始位置 (幅方向Y 最小 mm):';
                         endLabel.textContent = '終了位置 (幅方向Y 最大 mm):';
                         startInput.value = 0;
                         endInput.value = board.width;
                     } else {
-                        coordLabel.textContent = '位置 (幅方向のY座標 mm):';
+                        coordLabel.textContent = '切断位置 (幅方向のY座標 mm):';
                         startLabel.textContent = '開始位置 (長さ方向X 最小 mm):';
                         endLabel.textContent = '終了位置 (長さ方向X 最大 mm):';
                         startInput.value = 0;
@@ -801,7 +801,7 @@
         function goToAssembly() { switchStep(5); }
         function goToStep6() { switchStep(6); }
 
-        // --- ステップ①：板材入力 (名称・長さ・幅・厚さ) ---
+        // --- ステップ①：板材入力 (名称・長さ・幅・厚さの順) ---
         function renderBoardInputs() {
             const project = getCurrentProject();
             if(!project) return;
@@ -979,7 +979,6 @@
             const drawW = svgW - padding * 2;
             const drawH = svgH - padding * 2;
 
-            // 複数ボードがある場合もすべてのボードの最大寸法基準でスケール統一
             const maxL = Math.max(...project.boards.map(b => b.length), 100);
             const maxW = Math.max(...project.boards.map(b => b.width), 100);
 
@@ -1065,7 +1064,7 @@
             svg.innerHTML = svgContent;
         }
 
-        // --- ステップ③：部品名・不要パーツ設定 ---
+        // --- ステップ③：部品名・不要パーツ設定 (シンプル入力＆パーツプレビュー付き) ---
         function generateParts() {
             const project = getCurrentProject();
             if(!project) return;
@@ -1321,10 +1320,6 @@
             // マスポインタ位置を中心としたズーム
             renderer.domElement.addEventListener('wheel', (e) => {
                 e.preventDefault();
-                const rect = renderer.domElement.getBoundingClientRect();
-                const mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-                const mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
                 const zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
                 camera.position.x *= zoomFactor;
                 camera.position.y *= zoomFactor;
@@ -1511,7 +1506,6 @@
             const project = getCurrentProject();
             if(!project) return;
 
-            document.getElementById('pdf-modal-title').textContent = project.title;
             document.getElementById('pdf-modal-comment-display').textContent = project.comment || '（コメント未入力）';
 
             // パーツ表構築
@@ -1525,44 +1519,43 @@
                         const tr = document.createElement('tr');
                         tr.className = 'border-b';
                         tr.innerHTML = `
-                            <td class="p-1.5 border font-bold">#${index+1}</td>
-                            <td class="p-1.5 border">${part.boardName}</td>
-                            <td class="p-1.5 border font-bold text-amber-900">${part.name || '（未入力）'}</td>
-                            <td class="p-1.5 border">${part.length}</td>
-                            <td class="p-1.5 border">${part.width}</td>
-                            <td class="p-1.5 border">${part.thickness}</td>
+                            <td class="p-1 border border-slate-300 font-bold text-center">#${index+1}</td>
+                            <td class="p-1 border border-slate-300">${part.boardName}</td>
+                            <td class="p-1 border border-slate-300 font-bold text-amber-900">${part.name || '（未入力）'}</td>
+                            <td class="p-1 border border-slate-300 text-right">${part.length}</td>
+                            <td class="p-1 border border-slate-300 text-right">${part.width}</td>
+                            <td class="p-1 border border-slate-300 text-right">${part.thickness}</td>
                         `;
                         tbody.appendChild(tr);
                     }
                 });
             }
 
-            // 材料取図ボード一覧構築（印刷時も複数枚対応かつ綺麗に収まるサイズに調整）
+            // 材料取図ボード一覧構築 (2, 3, 4...)
             const boardsCont = document.getElementById('pdf-modal-boards-container');
             boardsCont.innerHTML = '';
             project.boards.forEach((board, index) => {
                 const div = document.createElement('div');
-                div.className = 'bg-slate-50 border p-2 rounded-lg flex flex-col gap-1 shrink-0';
+                div.className = 'bg-slate-50 border border-slate-300 p-2 rounded-lg flex flex-col gap-1 shrink-0';
                 div.innerHTML = `
                     <span class="text-xs font-bold text-amber-900">材料 #${index+1}: ${board.name} (${board.length}×${board.width}mm)</span>
-                    <svg id="pdf-board-svg-${board.id}" class="w-full h-28 bg-amber-100 rounded border" viewBox="0 0 600 450"></svg>
+                    <svg id="pdf-board-svg-${board.id}" class="w-full h-24 bg-amber-100 rounded border" viewBox="0 0 600 450"></svg>
                 `;
                 boardsCont.appendChild(div);
                 setTimeout(() => { drawBoard(`pdf-board-svg-${board.id}`, board); }, 50);
             });
 
-            // 等角投影図 (Isometric View) の描画（より大きく表示しつつ枠内におさめる最適化）
+            // 等角投影図 (Isometric View) の描画（枠内にしっかり収まりつつ大きく表示・背景白）
             const isoContainer = document.getElementById('pdf-isometric-canvas-container');
             isoContainer.innerHTML = '';
             
             const isoW = isoContainer.clientWidth || 520;
-            const isoH = 330;
+            const isoH = 290;
             const isoScene = new THREE.Scene();
             isoScene.background = new THREE.Color(0xffffff); // 背景白
 
-            // カメラ距離を少し近づけて大きく表示しつつ、全体が枠内におさまるように調整
-            const isoCamera = new THREE.PerspectiveCamera(32, isoW / isoH, 1, 5000);
-            isoCamera.position.set(340, 300, 340);
+            const isoCamera = new THREE.PerspectiveCamera(34, isoW / isoH, 1, 5000);
+            isoCamera.position.set(300, 260, 300);
             isoCamera.lookAt(0, 0, 0);
 
             const isoRenderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
@@ -1609,7 +1602,7 @@
             // ブラウザの印刷ダイアログが開きます。
             // 送信先 (Destination) で「PDFに保存 (Save as PDF)」を選択し、
             // 用紙サイズを「A3」、向きを「横 (Landscape)」、余白 (Margins) を「なし (None)」に設定すると、
-            // 綺麗にA3横1枚に収まったPDFが保存できます。
+            // 提供いただいた設計図テンプレートに完全に準拠したA3横1枚のPDFが保存できます。
             window.print();
         }
     </script>
