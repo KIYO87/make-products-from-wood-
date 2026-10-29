@@ -9,9 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
     <!-- Three.js 3Dライブラリの読み込み -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- jsPDF ライブラリの読み込み（PDF保存用） -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <!-- html2canvas ライブラリの読み込み（レイアウトを画像化してPDFに入れる） -->
+    <!-- html2canvas ライブラリの読み込み（JPEG保存用） -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         body { font-family: 'Noto Sans JP', 'Inter', sans-serif; }
@@ -74,7 +72,7 @@
                 <div onclick="switchStep(3)" id="step3-indicator" class="p-2 rounded-lg bg-slate-100 text-slate-400 transition cursor-pointer">③ 部品名・不要パーツ</div>
                 <div onclick="switchStep(4)" id="step4-indicator" class="p-2 rounded-lg bg-slate-100 text-slate-400 transition cursor-pointer">④ 材料取図一覧</div>
                 <div onclick="switchStep(5)" id="step5-indicator" class="p-2 rounded-lg bg-slate-100 text-slate-400 transition cursor-pointer">⑤ 3D組立</div>
-                <div onclick="switchStep(6)" id="step6-indicator" class="p-2 rounded-lg bg-slate-100 text-slate-400 transition cursor-pointer">⑥ PDF出力</div>
+                <div onclick="switchStep(6)" id="step6-indicator" class="p-2 rounded-lg bg-slate-100 text-slate-400 transition cursor-pointer">⑥ 画像出力</div>
             </div>
 
             <!-- ステップ①：板材の設定 (名称・長さ・幅・厚さ) -->
@@ -159,26 +157,18 @@
 
                         <!-- モード2: 途中位置指定ボックス -->
                         <div id="cut-mode-partial-box" class="flex flex-col gap-3 bg-white p-3 rounded-lg border border-slate-200 hidden">
-                            <p id="partial-hint" class="text-[11px] text-slate-500"></p>
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs font-bold text-slate-600">① 切断する位置（どこで切るか）:</label>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <select id="partial-pos-side" class="p-2 bg-slate-50 border border-slate-300 rounded-lg text-sm"></select>
-                                    <div class="flex items-center gap-1"><input type="number" id="partial-pos-dist" value="100" min="0" class="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-sm"><span class="text-xs text-slate-500">mm</span></div>
-                                </div>
+                            <div class="flex flex-col gap-1.5">
+                                <label id="cut-coord-label" class="text-xs font-bold text-slate-600">切断位置座標 (mm):</label>
+                                <input type="number" id="cut-coord-input" value="100" class="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-sm">
                             </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs font-bold text-slate-600">② 線を引き始める位置（始点）:</label>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <select id="partial-start-side" class="p-2 bg-slate-50 border border-slate-300 rounded-lg text-sm"></select>
-                                    <div class="flex items-center gap-1"><input type="number" id="partial-start-dist" value="0" min="0" class="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-sm"><span class="text-xs text-slate-500">mm</span></div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label id="cut-start-label" class="block text-xs font-semibold text-slate-500 mb-1">開始位置 (最小 mm):</label>
+                                    <input type="number" id="cut-start-input" value="0" class="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-sm">
                                 </div>
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs font-bold text-slate-600">③ 線を引き終わる位置（終点）:</label>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <select id="partial-end-side" class="p-2 bg-slate-50 border border-slate-300 rounded-lg text-sm"></select>
-                                    <div class="flex items-center gap-1"><input type="number" id="partial-end-dist" value="100" min="0" class="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-sm"><span class="text-xs text-slate-500">mm</span></div>
+                                <div>
+                                    <label id="cut-end-label" class="block text-xs font-semibold text-slate-500 mb-1">終了位置 (最大 mm):</label>
+                                    <input type="number" id="cut-end-input" value="150" class="w-full p-2 bg-slate-50 border border-slate-300 rounded-lg text-sm">
                                 </div>
                             </div>
                         </div>
@@ -190,12 +180,6 @@
                             <button onclick="resetCutsForCurrentBoard()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium py-2 rounded-xl text-xs transition">
                                 この板の切断線をすべてリセット
                             </button>
-                        </div>
-
-                        <div class="flex flex-col gap-1.5 pt-1">
-                            <label class="text-xs font-bold text-slate-600">引いた切断線の一覧（1本ずつ削除できます・単位 mm）:</label>
-                            <div id="cut-list" class="flex flex-col gap-1.5 max-h-52 overflow-y-auto"></div>
-                            <div id="cut-parts-summary" class="text-[11px] leading-snug text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg p-2"></div>
                         </div>
                     </div>
 
@@ -355,7 +339,7 @@
 
                         <div class="border-t pt-2">
                             <span class="text-[10px] text-slate-500 leading-tight block">
-                                💡 <b>操作</b>: パーツクリックで選択 / ドラッグで画面を移動 / ホイールでポインタ位置を中心に拡大・縮小 / 見る角度は右上のボタンで変更
+                                💡 <b>操作</b>: パーツクリックで選択 / ドラッグで視点回転 / ホイールでポインタ位置中心に拡大
                             </span>
                         </div>
                     </div>
@@ -372,32 +356,6 @@
                             </div>
                         </div>
 
-                        <div class="absolute top-4 right-4 z-10 flex flex-col gap-2 bg-slate-800/90 border border-slate-700 rounded-lg p-2 shadow-md w-[148px]">
-                            <span class="text-[11px] font-bold text-amber-400">🎥 見る向き</span>
-                            <div class="grid grid-cols-3 gap-1">
-                                <button onclick="setStandardView('iso')" class="bg-slate-700 hover:bg-amber-600 text-white text-[11px] py-1.5 rounded font-medium" title="等角（画像出力と同じ向き）">等角</button>
-                                <button onclick="setStandardView('front')" class="bg-slate-700 hover:bg-amber-600 text-white text-[11px] py-1.5 rounded font-medium">正面</button>
-                                <button onclick="setStandardView('back')" class="bg-slate-700 hover:bg-amber-600 text-white text-[11px] py-1.5 rounded font-medium">背面</button>
-                                <button onclick="setStandardView('left')" class="bg-slate-700 hover:bg-amber-600 text-white text-[11px] py-1.5 rounded font-medium">左</button>
-                                <button onclick="setStandardView('right')" class="bg-slate-700 hover:bg-amber-600 text-white text-[11px] py-1.5 rounded font-medium">右</button>
-                                <button onclick="fitAllView()" class="bg-emerald-700 hover:bg-emerald-600 text-white text-[11px] py-1.5 rounded font-medium" title="全部の部品が見えるように合わせる">全体</button>
-                                <button onclick="setStandardView('top')" class="bg-slate-700 hover:bg-amber-600 text-white text-[11px] py-1.5 rounded font-medium">上</button>
-                                <button onclick="setStandardView('bottom')" class="bg-slate-700 hover:bg-amber-600 text-white text-[11px] py-1.5 rounded font-medium">下</button>
-                            </div>
-                            <span class="text-[11px] font-bold text-amber-400">🔄 回して見る</span>
-                            <div class="grid grid-cols-3 gap-1">
-                                <button onclick="rotateView(90, 0)" class="bg-slate-700 hover:bg-amber-600 text-white text-[11px] py-1.5 rounded font-medium" title="左へ90°回す">⟲90°</button>
-                                <button onclick="rotateView(0, -15)" class="bg-slate-700 hover:bg-amber-600 text-white text-sm py-1 rounded font-bold" title="もっと上から見る">▲</button>
-                                <button onclick="rotateView(-90, 0)" class="bg-slate-700 hover:bg-amber-600 text-white text-[11px] py-1.5 rounded font-medium" title="右へ90°回す">⟳90°</button>
-                                <button onclick="rotateView(15, 0)" class="bg-slate-700 hover:bg-amber-600 text-white text-sm py-1 rounded font-bold" title="左へ回す">◀</button>
-                                <span></span>
-                                <button onclick="rotateView(-15, 0)" class="bg-slate-700 hover:bg-amber-600 text-white text-sm py-1 rounded font-bold" title="右へ回す">▶</button>
-                                <span></span>
-                                <button onclick="rotateView(0, 15)" class="bg-slate-700 hover:bg-amber-600 text-white text-sm py-1 rounded font-bold" title="もっと下から見る">▼</button>
-                                <span></span>
-                            </div>
-                        </div>
-
                         <div class="absolute bottom-3 left-4 text-xs text-slate-300 bg-slate-800/80 px-3 py-1.5 rounded border border-slate-700 pointer-events-none">
                             3D組立スペース（重なり・向き確認用）
                         </div>
@@ -409,29 +367,32 @@
                         ← 材料取図一覧に戻る
                     </button>
                     <button onclick="goToStep6()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3 rounded-lg shadow-lg transition flex items-center gap-2 text-base">
-                        📄 PDF出力画面へ進む ➔
+                        🖼️ 画像出力画面へ進む ➔
                     </button>
                 </div>
             </section>
 
-            <!-- ステップ⑥：PDF出力・コメント・レイアウト確認 -->
+            <!-- ステップ⑥：画像出力・コメント・レイアウト確認 -->
             <section id="step6-container" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hidden flex flex-col gap-6">
                 <div class="border-b pb-3 flex justify-between items-center">
                     <div>
-                        <h2 class="text-lg font-bold text-amber-900">⑥ PDF出力・コメント入力</h2>
-                        <p class="text-sm text-slate-500">製作レポート用のコメントを入力し、レイアウト（1ページ目：構想図・部品表・材料取り図、2ページ目：第三角法の正投影図）を確認してPDFとして保存できます。</p>
+                        <h2 class="text-lg font-bold text-amber-900">⑥ 画像出力・コメント入力</h2>
+                        <p class="text-sm text-slate-500">製作レポート用のコメントを入力し、レイアウトを確認してJPEG画像として保存できます。</p>
                     </div>
                     <button onclick="goToAssembly()" class="text-sm text-amber-800 hover:underline">← 3D組立に戻る</button>
                 </div>
 
                 <div class="flex flex-col gap-4 max-w-2xl bg-slate-50 p-5 rounded-xl border border-slate-200">
-                    <label class="block text-xs font-bold text-slate-700">製作の感想・留意点（任意入力・PDFに掲載されます）:</label>
+                    <label class="block text-xs font-bold text-slate-700">製作の感想・留意点（任意入力・画像に掲載されます）:</label>
                     <textarea id="pdf-comment-input" rows="3" onchange="updateProjectComment(this.value)" placeholder="例：側板のけがき寸法に気をつけ、垂直に組み立てられるように工夫した。" class="w-full p-3 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-amber-500"></textarea>
                 </div>
 
                 <div class="flex items-center gap-4 pt-2">
                     <button onclick="openPdfLayoutModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-8 py-3 rounded-lg shadow-lg transition flex items-center gap-2 text-base">
                         👁️ レイアウトの確認
+                    </button>
+                    <button onclick="downloadPdfLayout()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3 rounded-lg shadow-lg transition flex items-center gap-2 text-base">
+                        📥 画像を保存 (JPEGダウンロード)
                     </button>
                 </div>
 
@@ -454,16 +415,14 @@
                     <h3 class="font-bold text-sm">図面レイアウト確認</h3>
                 </div>
                 <div class="flex items-center gap-3">
-                    <button onclick="scrollToPdfPage(1)" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition">1ページ目へ</button>
-                    <button onclick="scrollToPdfPage(2)" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition">2ページ目へ</button>
-                    <button onclick="downloadPdfLayout()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-1.5 rounded-lg text-xs transition">📄 PDFを保存（2ページ）</button>
+                    <button onclick="downloadPdfLayout()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-1.5 rounded-lg text-xs transition">📥 画像を保存 (JPEG)</button>
                     <button onclick="closePdfLayoutModal()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-4 py-1.5 rounded-lg text-xs transition">✕ 閉じる</button>
                 </div>
             </div>
 
             <!-- プレビューシート -->
-            <div id="pdf-preview-sheet" class="flex-1 overflow-auto p-2 bg-slate-200 flex flex-col items-center gap-4">
-                <div id="pdf-sheet-1" class="bg-white w-[1260px] h-[890px] shadow-2xl p-4 flex flex-col justify-between text-slate-800 relative border border-slate-300 box-border shrink-0 mx-auto">
+            <div id="pdf-preview-sheet" class="flex-1 overflow-auto p-2 bg-slate-200 flex justify-center items-center">
+                <div class="bg-white w-[1260px] h-[890px] shadow-2xl p-4 flex flex-col justify-between text-slate-800 relative border border-slate-300 box-border shrink-0 m-auto">
                     
                     <div class="grid grid-cols-2 gap-4 h-full flex-1 overflow-hidden box-border">
                         
@@ -473,11 +432,14 @@
                             <!-- 左上：等角図 -->
                             <div class="flex flex-col gap-0.5 shrink-0">
                                 <div class="flex justify-between items-end border-b-2 border-slate-800 pb-0.5">
-                                    <h1 class="text-base font-bold text-slate-950 tracking-wider"><span id="pdf-project-title">（プロジェクト名）</span></h1>
+                                    <h1 class="text-sm font-bold text-slate-950 tracking-wider">設計図 &nbsp;&nbsp; 構想図（等角図）</h1>
+                                    <div class="text-[9.5px] font-semibold text-slate-700 flex gap-2">
+                                        <span>作成日: ____年____月____日</span>
+                                        <span>名前: __________________</span>
+                                    </div>
                                 </div>
                                 <div class="bg-white rounded-xl p-0.5 flex flex-col items-center justify-center relative overflow-hidden border border-slate-400 shadow-inner h-[450px] box-border">
                                     <div id="pdf-isometric-canvas-container" class="w-full h-full flex items-center justify-center overflow-hidden rounded-lg bg-white"></div>
-                                    <span class="absolute top-1.5 left-2.5 z-10 text-[12px] font-bold text-slate-900">構想図（等角図）</span>
                                 </div>
                             </div>
 
@@ -543,25 +505,16 @@
                             </div>
 
                             <!-- 右下：コメント欄 -->
-                            <div class="flex flex-col gap-0.5 shrink-0 h-[160px] mb-9 box-border">
+                            <div class="flex flex-col gap-0.5 shrink-0 h-[160px] box-border">
                                 <h3 class="font-bold text-xs text-slate-950 border-b border-slate-400 pb-0.5">コメント</h3>
-                                <div class="bg-slate-50 p-2 rounded border border-slate-400 h-[88px] overflow-y-auto box-border">
+                                <div class="bg-slate-50 p-2 rounded border border-slate-400 h-[135px] overflow-y-auto box-border">
                                     <p id="pdf-modal-comment-display" class="text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed">（コメント未入力）</p>
-                                </div>
-                                <div class="flex justify-between items-center text-[10.5px] font-semibold text-slate-700 pt-1">
-                                    <span>作成日: <span id="pdf-created-at">____年__月__日 __:__</span></span>
-                                    <span class="flex items-center gap-1.5">名前: <span class="inline-block w-[320px] h-9 border border-slate-700 rounded-sm bg-white"></span></span>
                                 </div>
                             </div>
 
                         </div>
 
                     </div>
-                </div>
-
-                <!-- 2ページ目：第三角法による正投影図 -->
-                <div id="pdf-sheet-2" class="bg-white w-[1260px] h-[890px] shadow-2xl text-slate-800 relative border border-slate-300 box-border shrink-0 mx-auto overflow-hidden">
-                    <svg id="pdf-ortho-svg" width="1260" height="890" viewBox="0 0 1260 890" font-family="'Noto Sans JP', 'Inter', sans-serif" style="display:block"></svg>
                 </div>
             </div>
         </div>
@@ -588,7 +541,6 @@
         let scene, camera, renderer, raycaster, mouse;
         let assembledMeshes = [];
         let selectedMesh = null;
-let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
 
         // 初期化実行
         window.onload = function() {
@@ -597,6 +549,9 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
             
             document.addEventListener('change', function(e) {
                 if(e.target && e.target.name === 'cut-dir') {
+                    updateCutLabels();
+                }
+                if(e.target && e.target.name === 'edge-side') {
                     updateCutLabels();
                 }
             });
@@ -608,25 +563,17 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
             const board = project.boards.find(b => b.id === project.activeBoardId);
             if(!board) return;
 
-            const isV = document.querySelector('input[name="cut-dir"]:checked').value === 'v';
-            // 縦切断：位置は左右から、線の範囲は上下から ／ 横切断：位置は上下から、線の範囲は左右から
-            const posOpts = isV ? [['min', '左から'], ['max', '右から']] : [['min', '上から'], ['max', '下から']];
-            const extOpts = isV ? [['min', '上から'], ['max', '下から']] : [['min', '左から'], ['max', '右から']];
-            const fill = (id, opts) => {
-                const sel = document.getElementById(id);
-                sel.innerHTML = opts.map(o => `<option value="${o[0]}">${o[1]}</option>`).join('');
-            };
-            fill('partial-pos-side', posOpts);
-            fill('partial-start-side', extOpts);
-            fill('partial-end-side', extOpts);
+            const dir = document.querySelector('input[name="cut-dir"]:checked').value;
+            const startInput = document.getElementById('cut-start-input');
+            const endInput = document.getElementById('cut-end-input');
 
-            const extTotal = isV ? board.width : board.length;
-            document.getElementById('partial-start-dist').value = 0;
-            document.getElementById('partial-end-dist').value = Math.round(extTotal / 2);
-            document.getElementById('partial-hint').textContent =
-                `板の大きさ（単位 mm）: 長さ(横)${board.length} × 幅(縦)${board.width}。` +
-                (isV ? '縦線は「左・右から」で位置、「上・下から」で線の範囲を指定します。'
-                     : '横線は「上・下から」で位置、「左・右から」で線の範囲を指定します。');
+            if(dir === 'v') {
+                startInput.value = 0;
+                endInput.value = board.width;
+            } else {
+                startInput.value = 0;
+                endInput.value = board.length;
+            }
         }
 
         function toggleCutMode() {
@@ -843,13 +790,10 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
             } else if(stepNumber === 3) {
                 generateParts();
             } else if(stepNumber === 4) {
-                generateParts();   // けがき線の変更を部品に反映
                 renderSummaryView();
             } else if(stepNumber === 5) {
-                generateParts();
                 initAssembly3D();
             } else if(stepNumber === 6) {
-                generateParts();
                 renderPdfStepComment();
             }
         }
@@ -948,7 +892,7 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
             project.boards.forEach(b => {
                 const opt = document.createElement('option');
                 opt.value = b.id;
-                opt.textContent = `${b.name} (長さ:${b.length} × 幅:${b.width})`;
+                opt.textContent = `${b.name} (長さ:${b.length}mm × 幅:${b.width}mm)`;
                 if(b.id === project.activeBoardId) opt.selected = true;
                 select.appendChild(opt);
             });
@@ -974,7 +918,7 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
             const dir = document.querySelector('input[name="cut-dir"]:checked').value;
             const mode = document.querySelector('input[name="cut-mode"]:checked').value;
 
-            let coord, start = 0, end, extra = {};
+            let coord, start = 0, end;
             if(dir === 'v') {
                 end = board.width;
             } else {
@@ -1001,45 +945,23 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
                 } else {
                     coord = limitMax - dist;
                 }
-                extra = { posSide: side === 'left' ? 'min' : 'max', posDist: dist };
             } else {
-                const posTotal = (dir === 'v' ? board.length : board.width);
-                const extTotal = (dir === 'v' ? board.width : board.length);
-                const posSide = document.getElementById('partial-pos-side').value;
-                const posDist = Number(document.getElementById('partial-pos-dist').value);
-                let sSide = document.getElementById('partial-start-side').value;
-                let sDist = Number(document.getElementById('partial-start-dist').value);
-                let eSide = document.getElementById('partial-end-side').value;
-                let eDist = Number(document.getElementById('partial-end-dist').value);
+                coord = Number(document.getElementById('cut-coord-input').value);
+                start = Number(document.getElementById('cut-start-input').value);
+                end = Number(document.getElementById('cut-end-input').value);
 
-                if(isNaN(posDist) || posDist <= 0 || posDist >= posTotal) {
-                    showAlert(`切断位置は 0 より大きく ${posTotal} より小さい値にしてください。`);
+                if(isNaN(coord) || coord < 0) {
+                    showAlert('有効な切断位置座標を入力してください。');
                     return;
                 }
-                if(isNaN(sDist) || isNaN(eDist) || sDist < 0 || eDist < 0 || sDist > extTotal || eDist > extTotal) {
-                    showAlert(`始点・終点は 0〜${extTotal} の範囲で入力してください。`);
+                if(isNaN(start) || isNaN(end) || start >= end) {
+                    showAlert('有効な開始・終了位置を指定してください（開始 < 終了）。');
                     return;
                 }
-
-                coord = (posSide === 'min') ? posDist : posTotal - posDist;
-                start = (sSide === 'min') ? sDist : extTotal - sDist;
-                end = (eSide === 'min') ? eDist : extTotal - eDist;
-
-                // 始点と終点が逆になっていたら入れ替える
-                if(start > end) {
-                    [start, end] = [end, start];
-                    [sSide, eSide] = [eSide, sSide];
-                    [sDist, eDist] = [eDist, sDist];
-                }
-                if(end - start < 0.001) {
-                    showAlert('始点と終点が同じ位置です。線の長さが 0 になっています。');
-                    return;
-                }
-                extra = { posSide, posDist, startSide: sSide, startDist: sDist, endSide: eSide, endDist: eDist };
             }
 
             if(!board.cuts) board.cuts = [];
-            board.cuts.push(Object.assign({ dir, coord, start, end, mode: mode === 'edge' ? 'edge' : 'partial' }, extra));
+            board.cuts.push({ dir, coord, start, end, mode: mode === 'edge' ? 'edge' : 'partial' });
             
             saveCurrentProject();
             drawBoard();
@@ -1056,80 +978,6 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
             drawBoard();
         }
 
-        // --- けがき線の情報（位置・始点・終点の基準）---
-        const fmtMm = v => Math.round(v * 10) / 10;
-        const axisName = (axis, side) => axis === 'x' ? (side === 'min' ? '左から' : '右から') : (side === 'min' ? '上から' : '下から');
-
-        function getCutInfo(cut, board) {
-            const isV = cut.dir === 'v';
-            const posTotal = isV ? board.length : board.width;
-            const extTotal = isV ? board.width : board.length;
-            let ps = cut.posSide, pd = cut.posDist;
-            if(!ps) {
-                // 古いデータ：従来のルールで補う
-                ps = (cut.mode === 'edge' && cut.coord > posTotal / 2) ? 'max' : 'min';
-                pd = (ps === 'min') ? cut.coord : posTotal - cut.coord;
-            }
-            return {
-                isV, posTotal, extTotal,
-                posAxis: isV ? 'x' : 'y',
-                extAxis: isV ? 'y' : 'x',
-                ps, pd,
-                sS: cut.startSide || 'min', sD: (cut.startDist !== undefined) ? cut.startDist : cut.start,
-                eS: cut.endSide || 'min',   eD: (cut.endDist !== undefined) ? cut.endDist : cut.end,
-                isPartial: cut.start > 0.001 || cut.end < extTotal - 0.001
-            };
-        }
-
-        function describeCut(cut, board) {
-            const c = getCutInfo(cut, board);
-            const base = `${c.isV ? '縦線' : '横線'}：${axisName(c.posAxis, c.ps)}${fmtMm(c.pd)}`;
-            if(!c.isPartial) return base + '（端から端まで）';
-            return `${base}、${axisName(c.extAxis, c.sS)}${fmtMm(c.sD)} 〜 ${axisName(c.extAxis, c.eS)}${fmtMm(c.eD)}（長さ${fmtMm(cut.end - cut.start)}）`;
-        }
-
-        function renderCutList() {
-            const box = document.getElementById('cut-list');
-            if(!box) return;
-            const project = getCurrentProject();
-            const board = project ? project.boards.find(b => b.id === project.activeBoardId) : null;
-            const summaryEl = document.getElementById('cut-parts-summary');
-            if(summaryEl) {
-                if(board) {
-                    const ps = computeBoardParts(board);
-                    summaryEl.innerHTML = `<b>この切断でできる部品: ${ps.length}個（単位 mm）</b><br>` +
-                        ps.map(r => `${fmtMm(r.length)}×${fmtMm(r.width)}${r.irregular ? '（L字など）' : ''}`).join(' ／ ');
-                } else {
-                    summaryEl.textContent = '';
-                }
-            }
-            if(!board || !board.cuts || board.cuts.length === 0) {
-                box.innerHTML = '<p class="text-xs text-slate-400">まだ切断線がありません。</p>';
-                return;
-            }
-            box.innerHTML = '';
-            board.cuts.forEach((cut, i) => {
-                const row = document.createElement('div');
-                row.className = 'flex items-start gap-2 bg-white border border-slate-200 rounded-lg p-2';
-                row.innerHTML = `
-                    <span class="shrink-0 w-5 h-5 rounded-full bg-red-600 text-white text-[11px] font-bold flex items-center justify-center mt-0.5">${i + 1}</span>
-                    <span class="flex-1 text-[11px] leading-snug text-slate-700">${describeCut(cut, board)}</span>
-                    <button onclick="deleteCut(${i})" class="shrink-0 text-[11px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded px-2 py-1 font-medium">🗑️ 削除</button>
-                `;
-                box.appendChild(row);
-            });
-        }
-
-        function deleteCut(index) {
-            const project = getCurrentProject();
-            if(!project) return;
-            const board = project.boards.find(b => b.id === project.activeBoardId);
-            if(!board || !board.cuts || !board.cuts[index]) return;
-            board.cuts.splice(index, 1);
-            saveCurrentProject();
-            drawBoard();
-        }
-
         function drawBoard(targetSvgId = 'board-svg', targetBoard = null) {
             const project = getCurrentProject();
             if(!project) return;
@@ -1141,14 +989,14 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
             if(targetSvgId === 'board-svg') {
                 const info = document.getElementById('board-dimension-info');
                 if(board && info) {
-                    info.textContent = `板の元の大きさ（単位 mm） - 長さ(横): ${board.length} × 幅(縦): ${board.width} (厚さ: ${board.thickness})`;
+                    info.textContent = `板の元の大きさ - 長さ(横): ${board.length}mm × 幅(縦): ${board.width}mm (厚さ: ${board.thickness}mm)`;
                 }
             }
             if(!board) return;
 
             const svgW = 600, svgH = 450;
             const padding = 70;
-            const drawW = svgW - 180;   // 左右に寸法ラベル用の余白を確保
+            const drawW = svgW - padding * 2;
             const drawH = svgH - padding * 2;
 
             const maxL = Math.max(...project.boards.map(b => b.length), 100);
@@ -1165,180 +1013,56 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
 
             let svgContent = '';
 
+            // 外形寸法（上側）
             const dimLineY = startY - 25;
+            svgContent += `
+                <line x1="${startX}" y1="${startY}" x2="${startX}" y2="${dimLineY - 5}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2,2"/>
+                <line x1="${startX + realW}" y1="${startY}" x2="${startX + realW}" y2="${dimLineY - 5}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2,2"/>
+                <line x1="${startX}" y1="${dimLineY}" x2="${startX + realW}" y2="${dimLineY}" stroke="#334155" stroke-width="1.5"/>
+                <polygon points="${startX},${dimLineY} ${startX+8},${dimLineY-3} ${startX+8},${dimLineY+3}" fill="#334155"/>
+                <polygon points="${startX+realW},${dimLineY} ${startX+realW-8},${dimLineY-3} ${startX+realW-8},${dimLineY+3}" fill="#334155"/>
+                <rect x="${startX + realW/2 - 35}" y="${dimLineY - 12}" width="70" height="16" fill="#fef3c7" rx="2"/>
+                <text x="${startX + realW/2}" y="${dimLineY}" font-size="12" font-weight="bold" fill="#78350f" text-anchor="middle">${board.length} mm</text>
+            `;
+
+            // 外形寸法（左側）
             const dimLineX = startX - 35;
+            svgContent += `
+                <line x1="${startX}" y1="${startY}" x2="${dimLineX - 5}" y2="${startY}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2,2"/>
+                <line x1="${startX}" y1="${startY + realH}" x2="${dimLineX - 5}" y2="${startY + realH}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2,2"/>
+                <line x1="${dimLineX}" y1="${startY}" x2="${dimLineX}" y2="${startY + realH}" stroke="#334155" stroke-width="1.5"/>
+                <polygon points="${dimLineX},${startY} ${dimLineX-3},${startY+8} ${dimLineX+3},${startY+8}" fill="#334155"/>
+                <polygon points="${dimLineX},${startY+realH} ${dimLineX-3},${startY+realH-8} ${dimLineX+3},${startY+realH-8}" fill="#334155"/>
+                <rect x="${dimLineX - 22}" y="${startY + realH/2 - 10}" width="44" height="20" fill="#fef3c7" rx="2"/>
+                <text x="${dimLineX}" y="${startY + realH/2 + 4}" font-size="12" font-weight="bold" fill="#78350f" text-anchor="middle">${board.width}</text>
+            `;
 
             // 板本体
             svgContent += `<rect x="${startX}" y="${startY}" width="${realW}" height="${realH}" fill="#fef3c7" stroke="#78350f" stroke-width="3" rx="1"/>`;
 
-            // けがき線と寸法を描画（寸法はJISの寸法記入法：寸法補助線・寸法線・矢印・数値のみ。単位はmmで共通）
-            const showNum = (targetSvgId === 'board-svg');
-            const INK = '#1f2937', ARW = 7, FS = 11;
-
-            // すでに置いた数値の位置（重なり防止用）
-            const placed = [];
-            const hit = (cx, cy, rw, rh) => placed.some(r =>
-                cx - rw / 2 < r.x + r.w + 1.5 && cx + rw / 2 > r.x - 1.5 &&
-                cy - rh / 2 < r.y + r.h + 1.5 && cy + rh / 2 > r.y - 1.5);
-
-            // 数値を置く位置を決める。まず寸法線に沿ってずらし、だめなら線から離して再び探す
-            const place = (cx, cy, rw, rh, axis, lo, hi, perp) => {
-                const fits = axis === 'x' ? (rw <= hi - lo) : (rh <= hi - lo);
-                const search = (m, constrained) => {
-                    const maxK = (fits || !constrained) ? 90 : 0;
-                    for(let k = 0; k <= maxK; k++) {
-                        for(const sg of (k === 0 ? [0] : [1, -1])) {
-                            const off = k * 4 * sg;
-                            let x = cx, y = cy;
-                            if(axis === 'x') {
-                                x += off; y += m;
-                                if(constrained && fits && (x - rw / 2 < lo - 0.5 || x + rw / 2 > hi + 0.5)) continue;
-                            } else {
-                                y += off; x += m;
-                                if(constrained && fits && (y - rh / 2 < lo - 0.5 || y + rh / 2 > hi + 0.5)) continue;
-                            }
-                            if(x - rw / 2 < 2 || x + rw / 2 > 598 || y - rh / 2 < 2 || y + rh / 2 > 448) continue;
-                            if(!hit(x, y, rw, rh)) return { x, y };
-                        }
-                    }
-                    return null;
-                };
-                let pos = null;
-                for(const m of [0, ...perp]) { pos = search(m, true); if(pos) break; }
-                if(!pos) { for(const m of [0, ...perp]) { pos = search(m, false); if(pos) break; } }
-                if(!pos) pos = { x: cx, y: cy };
-                placed.push({ x: pos.x - rw / 2, y: pos.y - rh / 2, w: rw, h: rh });
-                return pos;
-            };
-
-            const textW = (str) => String(str).length * 6.3 + 3;
-            let labelLayer = '';   // 数値は最前面にまとめて描く
-            const halo = `stroke="#fef3c7" stroke-width="3" paint-order="stroke" stroke-linejoin="round"`;
-            const numH = (pos, txt) => { labelLayer += `<text x="${pos.x}" y="${pos.y + 4}" font-size="${FS}" fill="${INK}" text-anchor="middle" ${halo}>${txt}</text>`; };
-            // 縦の寸法線の数値は、図の右側から読めるように左へ90°回して書く
-            const numV = (pos, txt) => { labelLayer += `<text transform="translate(${pos.x + 4},${pos.y}) rotate(-90)" font-size="${FS}" fill="${INK}" text-anchor="middle" ${halo}>${txt}</text>`; };
-
-            const seen = new Set();   // 同じ長さの寸法線が重複したら1か所だけ描く
-            const thin = (x1, y1, x2, y2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${INK}" stroke-width="0.7"/>`;
-            const exts = (list) => list.map(e => thin(e[0], e[1], e[2], e[3])).join('');
-
-            // 横向きの寸法線：数値は線の上側
-            const dimH = (y, xa, xb, value, ext) => {
-                if(xb < xa) [xa, xb] = [xb, xa];
-                if(xb - xa < 2) return '';
-                const keyH = 'H|' + Math.round(xa * 2) + '|' + Math.round(xb * 2);
-                if(seen.has(keyH)) return '';
-                seen.add(keyH);
-                const label = fmtMm(value);
-                const w = textW(label);
-                const pos = place((xa + xb) / 2, y - 8, w, 12, 'x', xa, xb, [-14, -28, -42, 14]);
-                numH(pos, label);
-                const inside = (xb - xa) >= 2 * ARW + 4;
-                let g = exts(ext || []);
-                if(inside) {
-                    g += `<line x1="${xa}" y1="${y}" x2="${xb}" y2="${y}" stroke="${INK}" stroke-width="0.9"/>`;
-                    g += `<polygon points="${xa},${y} ${xa + ARW},${y - 2} ${xa + ARW},${y + 2}" fill="${INK}"/>`;
-                    g += `<polygon points="${xb},${y} ${xb - ARW},${y - 2} ${xb - ARW},${y + 2}" fill="${INK}"/>`;
-                } else {
-                    g += `<line x1="${xa - ARW - 2}" y1="${y}" x2="${xb + ARW + 2}" y2="${y}" stroke="${INK}" stroke-width="0.9"/>`;
-                    g += `<polygon points="${xa},${y} ${xa - ARW},${y - 2} ${xa - ARW},${y + 2}" fill="${INK}"/>`;
-                    g += `<polygon points="${xb},${y} ${xb + ARW},${y - 2} ${xb + ARW},${y + 2}" fill="${INK}"/>`;
-                }
-                return g;
-            };
-            // 縦向きの寸法線：数値は線の左側（回転して記入）
-            const dimV = (x, ya, yb, value, ext) => {
-                if(yb < ya) [ya, yb] = [yb, ya];
-                if(yb - ya < 2) return '';
-                const keyV = 'V|' + Math.round(ya * 2) + '|' + Math.round(yb * 2);
-                if(seen.has(keyV)) return '';
-                seen.add(keyV);
-                const label = fmtMm(value);
-                const w = textW(label);
-                const pos = place(x - 8, (ya + yb) / 2, 12, w, 'y', ya, yb, [-14, -28, -42, 14]);
-                numV(pos, label);
-                const inside = (yb - ya) >= 2 * ARW + 4;
-                let g = exts(ext || []);
-                if(inside) {
-                    g += `<line x1="${x}" y1="${ya}" x2="${x}" y2="${yb}" stroke="${INK}" stroke-width="0.9"/>`;
-                    g += `<polygon points="${x},${ya} ${x - 2},${ya + ARW} ${x + 2},${ya + ARW}" fill="${INK}"/>`;
-                    g += `<polygon points="${x},${yb} ${x - 2},${yb - ARW} ${x + 2},${yb - ARW}" fill="${INK}"/>`;
-                } else {
-                    g += `<line x1="${x}" y1="${ya - ARW - 2}" x2="${x}" y2="${yb + ARW + 2}" stroke="${INK}" stroke-width="0.9"/>`;
-                    g += `<polygon points="${x},${ya} ${x - 2},${ya - ARW} ${x + 2},${ya - ARW}" fill="${INK}"/>`;
-                    g += `<polygon points="${x},${yb} ${x - 2},${yb + ARW} ${x + 2},${yb + ARW}" fill="${INK}"/>`;
-                }
-                return g;
-            };
-
-            const left = startX, right = startX + realW, top = startY, bottom = startY + realH;
-
-            // 板の外形寸法
-            svgContent += dimH(dimLineY, left, right, board.length, [[left, top - 2, left, dimLineY - 4], [right, top - 2, right, dimLineY - 4]]);
-            svgContent += dimV(dimLineX, top, bottom, board.width, [[left - 2, top, dimLineX - 4, top], [left - 2, bottom, dimLineX - 4, bottom]]);
-            labelLayer += `<text x="592" y="14" font-size="10" fill="${INK}" text-anchor="end">単位：mm</text>`;
-
-            // 平行な切断線どうしの間隔を連続寸法で記入（板の端〜線、線〜線、線〜板の端）
-            {
-                const vMap = {}, hMap = {};
-                (board.cuts || []).forEach(cut => {
-                    const k = fmtMm(cut.coord);
-                    if(cut.dir === 'v') vMap[k] = Math.max(vMap[k] === undefined ? -1 : vMap[k], startY + cut.end * scale);
-                    else hMap[k] = Math.max(hMap[k] === undefined ? -1 : hMap[k], startX + cut.end * scale);
-                });
-                const points = (map, total) => [0, ...Object.keys(map).map(Number).filter(v => v > 0.001 && v < total - 0.001).sort((a, b) => a - b), total];
-
-                if(Object.keys(vMap).length > 0) {
-                    const pts = points(vMap, board.length);
-                    const yd = bottom + 16;
-                    const extAt = (v, xx) => (v <= 0.001 || v >= board.length - 0.001) ? [xx, bottom + 2, xx, yd + 4] : [xx, vMap[v] + 4, xx, yd + 4];
-                    for(let i = 0; i < pts.length - 1; i++) {
-                        const xa = left + pts[i] * scale, xb = left + pts[i + 1] * scale;
-                        svgContent += dimH(yd, xa, xb, pts[i + 1] - pts[i], [extAt(pts[i], xa), extAt(pts[i + 1], xb)]);
-                    }
-                }
-                if(Object.keys(hMap).length > 0) {
-                    const pts = points(hMap, board.width);
-                    const xd = right + 16;
-                    const extAt = (v, yy) => (v <= 0.001 || v >= board.width - 0.001) ? [right + 2, yy, xd + 4, yy] : [hMap[v] + 4, yy, xd + 4, yy];
-                    for(let i = 0; i < pts.length - 1; i++) {
-                        const ya = top + pts[i] * scale, yb = top + pts[i + 1] * scale;
-                        svgContent += dimV(xd, ya, yb, pts[i + 1] - pts[i], [extAt(pts[i], ya), extAt(pts[i + 1], yb)]);
-                    }
-                }
-            }
-
+            // けがき線を描画
             if(board.cuts) {
-                board.cuts.forEach((cut, idx) => {
-                    const c = getCutInfo(cut, board);
-                    const len = cut.end - cut.start;
-
-                    // 番号バッジ（けがき・切断画面のみ）
-                    const badge = (bx, by) => {
-                        if(!showNum) return;
-                        placed.push({ x: bx - 8, y: by - 8, w: 16, h: 16 });
-                        labelLayer += `<circle cx="${bx}" cy="${by}" r="8" fill="#dc2626"/><text x="${bx}" y="${by + 3.5}" font-size="10" font-weight="bold" fill="#fff" text-anchor="middle">${idx + 1}</text>`;
-                    };
-
-                    if(c.isV) {
+                board.cuts.forEach(cut => {
+                    if(cut.dir === 'v') {
                         const x = startX + cut.coord * scale;
                         const y1 = startY + cut.start * scale;
                         const y2 = startY + cut.end * scale;
 
                         svgContent += `<line x1="${x}" y1="${y1}" x2="${x}" y2="${y2}" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="5,3"/>`;
                         svgContent += `<circle cx="${x}" cy="${y1}" r="3.5" fill="#ef4444"/><circle cx="${x}" cy="${y2}" r="3.5" fill="#ef4444"/>`;
-                        badge(x, y1 - 13);
 
-                        if(c.isPartial) {
-                            // 始点（左側）・終点（右側）・線の長さ（さらに右側）
-                            svgContent += c.sS === 'min'
-                                ? dimV(x - 14, top, y1, c.sD, [[x - 4, y1, x - 17, y1]])
-                                : dimV(x - 14, y1, bottom, c.sD, [[x - 4, y1, x - 17, y1]]);
-                            svgContent += c.eS === 'min'
-                                ? dimV(x + 14, top, y2, c.eD, [[x + 4, y2, x + 17, y2]])
-                                : dimV(x + 14, y2, bottom, c.eD, [[x + 4, y2, x + 17, y2]]);
-                            svgContent += dimV(x + 28, y1, y2, len, [[x + 4, y1, x + 31, y1], [x + 4, y2, x + 31, y2]]);
-                        }
+                        const leftDist = cut.coord;
+                        const rightDist = board.length - cut.coord;
+                        const isLeftCloser = leftDist <= board.length / 2;
+                        const displayDist = cut.mode === 'edge' ? (isLeftCloser ? leftDist : rightDist) : leftDist;
+                        const targetMidX = cut.mode === 'edge' ? (isLeftCloser ? (startX + x) / 2 : (x + startX + realW) / 2) : (startX + x) / 2;
+                        const labelText = `${displayDist}mm`;
+
+                        svgContent += `
+                            <line x1="${cut.mode === 'edge' ? (isLeftCloser ? startX : x) : startX}" y1="${y2 + 15}" x2="${cut.mode === 'edge' ? (isLeftCloser ? x : startX + realW) : x}" y2="${y2 + 15}" stroke="#b91c1c" stroke-width="1"/>
+                            <rect x="${targetMidX - 24}" y="${y2 + 7}" width="48" height="16" fill="#fee2e2" rx="2"/>
+                            <text x="${targetMidX}" y="${y2 + 19}" font-size="10" font-weight="bold" fill="#b91c1c" text-anchor="middle">${labelText}</text>
+                        `;
                     } else {
                         const y = startY + cut.coord * scale;
                         const x1 = startX + cut.start * scale;
@@ -1346,29 +1070,32 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
 
                         svgContent += `<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="5,3"/>`;
                         svgContent += `<circle cx="${x1}" cy="${y}" r="3.5" fill="#ef4444"/><circle cx="${x2}" cy="${y}" r="3.5" fill="#ef4444"/>`;
-                        badge(x1 - 13, y);
 
-                        if(c.isPartial) {
-                            // 始点（上側）・終点（下側）・線の長さ（さらに下側）
-                            svgContent += c.sS === 'min'
-                                ? dimH(y - 14, left, x1, c.sD, [[x1, y - 4, x1, y - 17]])
-                                : dimH(y - 14, x1, right, c.sD, [[x1, y - 4, x1, y - 17]]);
-                            svgContent += c.eS === 'min'
-                                ? dimH(y + 14, left, x2, c.eD, [[x2, y + 4, x2, y + 17]])
-                                : dimH(y + 14, x2, right, c.eD, [[x2, y + 4, x2, y + 17]]);
-                            svgContent += dimH(y + 28, x1, x2, len, [[x1, y + 4, x1, y + 31], [x2, y + 4, x2, y + 31]]);
-                        }
+                        const topDist = cut.coord;
+                        const bottomDist = board.width - cut.coord;
+                        const isTopCloser = topDist <= board.width / 2;
+                        const displayDist = cut.mode === 'edge' ? (isTopCloser ? topDist : bottomDist) : topDist;
+                        const targetMidY = cut.mode === 'edge' ? (isTopCloser ? (startY + y) / 2 : (y + startY + realH) / 2) : (startY + y) / 2;
+                        const labelText = `${displayDist}mm`;
+
+                        svgContent += `
+                            <line x1="${x2 + 15}" y1="${cut.mode === 'edge' ? (isTopCloser ? startY : y) : startY}" x2="${x2 + 15}" y2="${cut.mode === 'edge' ? (isTopCloser ? y : startY + realH) : y}" stroke="#b91c1c" stroke-width="1"/>
+                            <rect x="${x2 + 20}" y="${targetMidY - 8}" width="48" height="16" fill="#fee2e2" rx="2"/>
+                            <text x="${x2 + 24}" y="${targetMidY + 4}" font-size="10" font-weight="bold" fill="#b91c1c" text-anchor="start">${labelText}</text>
+                        `;
                     }
                 });
             }
 
-            svg.innerHTML = svgContent + labelLayer;
-            if(targetSvgId === 'board-svg') renderCutList();
+            svg.innerHTML = svgContent;
         }
 
         // --- ステップ③：部品設定 ---
         // けがき線（途中までの線も含む）で実際に切り離される領域だけを部品として生成する
-        function computeBoardParts(board) {
+        function generateParts() {
+            const project = getCurrentProject();
+            if(!project) return;
+
             const EPS = 0.001;
             const near = (a, b) => Math.abs(a - b) < EPS;
             const uniqSorted = (arr) => {
@@ -1380,107 +1107,107 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
                 return out;
             };
 
-            const result = [];
-            const cuts = board.cuts || [];
-
-            // 格子の分割座標（切断位置と、線の開始・終了位置をすべて含める）
-            let xs = [0, board.length];
-            let ys = [0, board.width];
-            cuts.forEach(c => {
-                if(c.dir === 'v') {
-                    xs.push(c.coord);
-                    ys.push(c.start, c.end);
-                } else {
-                    ys.push(c.coord);
-                    xs.push(c.start, c.end);
-                }
-            });
-            xs = uniqSorted(xs.filter(v => v >= -EPS && v <= board.length + EPS));
-            ys = uniqSorted(ys.filter(v => v >= -EPS && v <= board.width + EPS));
-
-            const nx = xs.length - 1;
-            const ny = ys.length - 1;
-            if(nx < 1 || ny < 1) return result;
-
-            // セル(i-1,j)とセル(i,j)の間（x=xs[i]）に縦の切断線が通っているか
-            const wallV = (i, j) => cuts.some(c =>
-                c.dir === 'v' && near(c.coord, xs[i]) &&
-                c.start <= ys[j] + EPS && c.end >= ys[j + 1] - EPS
-            );
-            // セル(i,j-1)とセル(i,j)の間（y=ys[j]）に横の切断線が通っているか
-            const wallH = (i, j) => cuts.some(c =>
-                c.dir === 'h' && near(c.coord, ys[j]) &&
-                c.start <= xs[i] + EPS && c.end >= xs[i + 1] - EPS
-            );
-
-            // 切断線で区切られていないセル同士をつなげて領域（＝部品）にする
-            const visited = Array.from({ length: nx }, () => new Array(ny).fill(false));
-
-            for(let i = 0; i < nx; i++) {
-                for(let j = 0; j < ny; j++) {
-                    if(visited[i][j]) continue;
-
-                    const stack = [[i, j]];
-                    visited[i][j] = true;
-                    let minI = i, maxI = i, minJ = j, maxJ = j;
-                    let area = 0;
-
-                    while(stack.length > 0) {
-                        const [ci, cj] = stack.pop();
-                        area += (xs[ci + 1] - xs[ci]) * (ys[cj + 1] - ys[cj]);
-                        minI = Math.min(minI, ci); maxI = Math.max(maxI, ci);
-                        minJ = Math.min(minJ, cj); maxJ = Math.max(maxJ, cj);
-
-                        if(ci > 0 && !visited[ci - 1][cj] && !wallV(ci, cj)) { visited[ci - 1][cj] = true; stack.push([ci - 1, cj]); }
-                        if(ci < nx - 1 && !visited[ci + 1][cj] && !wallV(ci + 1, cj)) { visited[ci + 1][cj] = true; stack.push([ci + 1, cj]); }
-                        if(cj > 0 && !visited[ci][cj - 1] && !wallH(ci, cj)) { visited[ci][cj - 1] = true; stack.push([ci, cj - 1]); }
-                        if(cj < ny - 1 && !visited[ci][cj + 1] && !wallH(ci, cj + 1)) { visited[ci][cj + 1] = true; stack.push([ci, cj + 1]); }
-                    }
-
-                    const x1 = xs[minI], x2 = xs[maxI + 1];
-                    const y1 = ys[minJ], y2 = ys[maxJ + 1];
-                    const pLength = x2 - x1;
-                    const pWidth = y2 - y1;
-                    if(pLength <= 0 || pWidth <= 0) continue;
-
-                    result.push({
-                        length: pLength, width: pWidth, x: x1, y: y1,
-                        irregular: Math.abs(area - pLength * pWidth) > 0.01   // 長方形でない（L字など）
-                    });
-                }
-            }
-            return result;
-        }
-
-        // けがき線（途中までの線も含む）で実際に切り離される領域だけを部品として生成する
-        function generateParts() {
-            const project = getCurrentProject();
-            if(!project) return;
-
             let newParts = [];
             let partIdCounter = 1;
 
             project.boards.forEach(board => {
-                computeBoardParts(board).forEach(r => {
-                    const matched = project.parts ? project.parts.find(p =>
-                        p.boardName === board.name &&
-                        Math.abs(p.length - r.length) < 1 && Math.abs(p.width - r.width) < 1 &&
-                        (p.x === undefined || (Math.abs(p.x - r.x) < 1 && Math.abs(p.y - r.y) < 1))
-                    ) : null;
+                const cuts = board.cuts || [];
 
-                    newParts.push({
-                        id: partIdCounter++,
-                        boardName: board.name,
-                        length: r.length,
-                        width: r.width,
-                        thickness: board.thickness,
-                        x: r.x,
-                        y: r.y,
-                        irregular: r.irregular,
-                        name: matched ? matched.name : '',
-                        excluded: matched ? matched.excluded : false
-                    });
+                // 格子の分割座標（切断位置と、線の開始・終了位置をすべて含める）
+                let xs = [0, board.length];
+                let ys = [0, board.width];
+                cuts.forEach(c => {
+                    if(c.dir === 'v') {
+                        xs.push(c.coord);
+                        ys.push(c.start, c.end);
+                    } else {
+                        ys.push(c.coord);
+                        xs.push(c.start, c.end);
+                    }
                 });
+                xs = uniqSorted(xs.filter(v => v >= -EPS && v <= board.length + EPS));
+                ys = uniqSorted(ys.filter(v => v >= -EPS && v <= board.width + EPS));
+
+                const nx = xs.length - 1;
+                const ny = ys.length - 1;
+                if(nx < 1 || ny < 1) return;
+
+                // セル(i-1,j)とセル(i,j)の間（x=xs[i]）に縦の切断線が通っているか
+                const wallV = (i, j) => cuts.some(c =>
+                    c.dir === 'v' && near(c.coord, xs[i]) &&
+                    c.start <= ys[j] + EPS && c.end >= ys[j + 1] - EPS
+                );
+                // セル(i,j-1)とセル(i,j)の間（y=ys[j]）に横の切断線が通っているか
+                const wallH = (i, j) => cuts.some(c =>
+                    c.dir === 'h' && near(c.coord, ys[j]) &&
+                    c.start <= xs[i] + EPS && c.end >= xs[i + 1] - EPS
+                );
+
+                // 切断線で区切られていないセル同士をつなげて領域（＝部品）にする
+                const visited = Array.from({ length: nx }, () => new Array(ny).fill(false));
+
+                for(let i = 0; i < nx; i++) {
+                    for(let j = 0; j < ny; j++) {
+                        if(visited[i][j]) continue;
+
+                        const stack = [[i, j]];
+                        visited[i][j] = true;
+                        let minI = i, maxI = i, minJ = j, maxJ = j;
+                        let area = 0;
+
+                        while(stack.length > 0) {
+                            const [ci, cj] = stack.pop();
+                            area += (xs[ci + 1] - xs[ci]) * (ys[cj + 1] - ys[cj]);
+                            minI = Math.min(minI, ci); maxI = Math.max(maxI, ci);
+                            minJ = Math.min(minJ, cj); maxJ = Math.max(maxJ, cj);
+
+                            // 左
+                            if(ci > 0 && !visited[ci - 1][cj] && !wallV(ci, cj)) {
+                                visited[ci - 1][cj] = true; stack.push([ci - 1, cj]);
+                            }
+                            // 右
+                            if(ci < nx - 1 && !visited[ci + 1][cj] && !wallV(ci + 1, cj)) {
+                                visited[ci + 1][cj] = true; stack.push([ci + 1, cj]);
+                            }
+                            // 上
+                            if(cj > 0 && !visited[ci][cj - 1] && !wallH(ci, cj)) {
+                                visited[ci][cj - 1] = true; stack.push([ci, cj - 1]);
+                            }
+                            // 下
+                            if(cj < ny - 1 && !visited[ci][cj + 1] && !wallH(ci, cj + 1)) {
+                                visited[ci][cj + 1] = true; stack.push([ci, cj + 1]);
+                            }
+                        }
+
+                        const x1 = xs[minI], x2 = xs[maxI + 1];
+                        const y1 = ys[minJ], y2 = ys[maxJ + 1];
+                        const pLength = x2 - x1;
+                        const pWidth = y2 - y1;
+                        if(pLength <= 0 || pWidth <= 0) continue;
+
+                        // 長方形でない（L字など）かどうか
+                        const irregular = Math.abs(area - pLength * pWidth) > 0.01;
+
+                        const matched = project.parts ? project.parts.find(p =>
+                            p.boardName === board.name &&
+                            Math.abs(p.length - pLength) < 1 && Math.abs(p.width - pWidth) < 1 &&
+                            (p.x === undefined || (Math.abs(p.x - x1) < 1 && Math.abs(p.y - y1) < 1))
+                        ) : null;
+
+                        newParts.push({
+                            id: partIdCounter++,
+                            boardName: board.name,
+                            length: pLength,
+                            width: pWidth,
+                            thickness: board.thickness,
+                            x: x1,
+                            y: y1,
+                            irregular: irregular,
+                            name: matched ? matched.name : '',
+                            excluded: matched ? matched.excluded : false
+                        });
+                    }
+                }
             });
 
             project.parts = newParts;
@@ -1522,9 +1249,9 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
                     <div class="bg-amber-50/60 border border-amber-200 rounded-lg p-2 flex items-center justify-center h-28 relative overflow-hidden">
                         <svg width="200" height="110" viewBox="0 0 200 110" class="max-h-full">
                             <rect x="${(200 - rectW)/2}" y="${(110 - rectH)/2}" width="${rectW}" height="${rectH}" fill="#fef3c7" stroke="#78350f" stroke-width="2" rx="1"/>
-                            <text x="100" y="55" font-size="10" fill="#78350f" font-weight="bold" text-anchor="middle" dominant-baseline="middle">${part.length} × ${part.width}</text>
+                            <text x="100" y="55" font-size="10" fill="#78350f" font-weight="bold" text-anchor="middle" dominant-baseline="middle">${part.length} × ${part.width} mm</text>
                         </svg>
-                        <span class="absolute bottom-1 right-2 text-[10px] text-slate-400">厚さ: ${part.thickness}</span>
+                        <span class="absolute bottom-1 right-2 text-[10px] text-slate-400">厚さ: ${part.thickness}mm</span>
                     </div>
                     ${part.irregular ? '<div class="text-[11px] text-rose-600 bg-rose-50 border border-rose-200 rounded px-2 py-1">⚠️ L字などの形の部品です（外形の大きさを表示しています）</div>' : ''}
 
@@ -1579,7 +1306,7 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
                 card.innerHTML = `
                     <div class="flex justify-between items-center border-b pb-2">
                         <h4 class="font-bold text-amber-900 text-sm">材料 #${index + 1}: ${board.name}</h4>
-                        <span class="text-xs text-slate-500">長さ:${board.length} × 幅:${board.width} (厚:${board.thickness}) 単位 mm</span>
+                        <span class="text-xs text-slate-500">長さ:${board.length}mm × 幅:${board.width}mm (厚:${board.thickness}mm)</span>
                     </div>
                     <div class="bg-slate-900 rounded-lg p-2 flex items-center justify-center overflow-hidden">
                         <svg id="summary-board-svg-${board.id}" class="w-full max-h-[300px] bg-amber-100 rounded border border-amber-900" viewBox="0 0 600 450"></svg>
@@ -1655,167 +1382,54 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
             raycaster = new THREE.Raycaster();
             mouse = new THREE.Vector2();
 
-            // 視点の注目点（回転・拡大縮小の中心）。最初はXYZ軸の交点
-            const viewTarget = new THREE.Vector3(0, 0, 0);
-            const MIN_DIST = 15, MAX_DIST = 3000;
-
-            let dragging = false;   // ドラッグ：画面（視点）の移動。回転はボタンで行う
+            let isDragging = false;
             let previousMousePosition = { x: 0, y: 0 };
-            let anim = null;        // ボタンによる視点切り替えのアニメーション
 
-            const setMouseFromEvent = (e) => {
+            renderer.domElement.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+
                 const rect = renderer.domElement.getBoundingClientRect();
                 mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
                 mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-                return rect;
-            };
 
-            renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(assembledMeshes);
 
-            renderer.domElement.addEventListener('mousedown', (e) => {
-                anim = null;
-                dragging = true;
-                previousMousePosition = { x: e.clientX, y: e.clientY };
-
-                if(e.button === 0) {
-                    setMouseFromEvent(e);
-                    raycaster.setFromCamera(mouse, camera);
-                    const intersects = raycaster.intersectObjects(assembledMeshes);
-                    if(intersects.length > 0) {
-                        selectMesh(intersects[0].object);
-                    }
+                if(intersects.length > 0) {
+                    selectMesh(intersects[0].object);
                 }
             });
 
             renderer.domElement.addEventListener('mousemove', (e) => {
-                if(!dragging) return;
+                if(!isDragging) return;
                 const deltaX = e.clientX - previousMousePosition.x;
                 const deltaY = e.clientY - previousMousePosition.y;
-                previousMousePosition = { x: e.clientX, y: e.clientY };
 
-                // つかんで動かす感覚：マウスを動かした向きに、画面の中身が付いてくる
-                const dist = camera.position.distanceTo(viewTarget);
-                const perPixel = (2 * dist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) / renderer.domElement.clientHeight;
-                camera.updateMatrixWorld(true);
-                const right = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 0);
-                const up = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 1);
-                const move = right.multiplyScalar(-deltaX * perPixel).add(up.multiplyScalar(deltaY * perPixel));
-                camera.position.add(move);
-                viewTarget.add(move);
-                camera.lookAt(viewTarget);
+                scene.rotation.y += deltaX * 0.008;
+                camera.position.y = Math.max(-200, Math.min(600, camera.position.y + deltaY * 0.8));
+
+                previousMousePosition = { x: e.clientX, y: e.clientY };
             });
 
-            window.addEventListener('mouseup', () => { dragging = false; });
+            window.addEventListener('mouseup', () => { isDragging = false; });
 
-            // --- 見る向きを変える（ボタン用）---
-            const goTo = (to, ms) => {
-                const sph0 = new THREE.Spherical().setFromVector3(camera.position.clone().sub(viewTarget));
-                const from = { theta: sph0.theta, phi: sph0.phi, dist: sph0.radius, target: viewTarget.clone() };
-                const dTheta = Math.atan2(Math.sin(to.theta - from.theta), Math.cos(to.theta - from.theta));   // 近い回り方を選ぶ
-                const toPhi = Math.max(0.001, Math.min(Math.PI - 0.001, to.phi));
-                const toDist = Math.max(MIN_DIST, Math.min(MAX_DIST, to.dist));
-                const toTarget = to.target || from.target;
-                const t0 = performance.now();
-                const mine = anim = {};
-                const step = (now) => {
-                    if(anim !== mine) return;
-                    const k = Math.min(1, (now - t0) / ms);
-                    const e = 1 - Math.pow(1 - k, 3);
-                    viewTarget.lerpVectors(from.target, toTarget, e);
-                    const off = new THREE.Vector3().setFromSpherical(new THREE.Spherical(
-                        from.dist + (toDist - from.dist) * e,
-                        from.phi + (toPhi - from.phi) * e,
-                        from.theta + dTheta * e));
-                    camera.position.copy(viewTarget).add(off);
-                    camera.lookAt(viewTarget);
-                    if(k < 1) requestAnimationFrame(step); else anim = null;
-                };
-                requestAnimationFrame(step);
-            };
-            const currentSph = () => new THREE.Spherical().setFromVector3(camera.position.clone().sub(viewTarget));
-            const D = Math.PI / 180;
-
-            const VIEWS = {
-                iso:    { theta: Math.PI / 4,  phi: 1.0181 },        // 等角（画像出力の等角図と同じ向き）
-                front:  { theta: 0,            phi: Math.PI / 2 },   // 正面
-                back:   { theta: Math.PI,      phi: Math.PI / 2 },   // 背面
-                right:  { theta: Math.PI / 2,  phi: Math.PI / 2 },   // 右側面
-                left:   { theta: -Math.PI / 2, phi: Math.PI / 2 },   // 左側面
-                top:    { theta: 0,            phi: 0.001 },         // 真上から
-                bottom: { theta: 0,            phi: Math.PI - 0.001 } // 真下から
-            };
-
-            viewApi = {
-                setView(name) {
-                    const v = VIEWS[name];
-                    if(!v) return;
-                    goTo({ theta: v.theta, phi: v.phi, dist: currentSph().radius }, 400);
-                },
-                rotateBy(dThetaDeg, dPhiDeg) {
-                    const c = currentSph();
-                    goTo({ theta: c.theta + dThetaDeg * D, phi: c.phi + dPhiDeg * D, dist: c.radius }, 250);
-                },
-                fitAll() {
-                    const c = currentSph();
-                    const box = new THREE.Box3();
-                    assembledMeshes.forEach(m => box.expandByObject(m));
-                    if(box.isEmpty()) {
-                        goTo({ theta: c.theta, phi: c.phi, dist: 475, target: new THREE.Vector3(0, 0, 0) }, 400);
-                        return;
-                    }
-                    const center = box.getCenter(new THREE.Vector3());
-                    const radius = box.getSize(new THREE.Vector3()).length() / 2;
-                    const halfFov = THREE.MathUtils.degToRad(Math.min(camera.fov, camera.fov * camera.aspect) / 2);
-                    goTo({ theta: c.theta, phi: c.phi, dist: (radius / Math.sin(halfFov)) * 1.1, target: center }, 400);
-                }
-            };
-
-            // ホイール：マウスポインタの下の点を中心に拡大・縮小
             renderer.domElement.addEventListener('wheel', (e) => {
                 e.preventDefault();
-                anim = null;
-                setMouseFromEvent(e);
-                raycaster.setFromCamera(mouse, camera);
+                const zoomFactor = e.deltaY > 0 ? 1.1 : 0.9;
+                camera.position.x *= zoomFactor;
+                camera.position.y *= zoomFactor;
+                camera.position.z *= zoomFactor;
 
-                // ポインタの下の点を探す：部品 → 床面 → 注目点を通る画面と平行な面 の順
-                let anchor = null;
-                const hits = raycaster.intersectObjects(assembledMeshes);
-                if(hits.length > 0) {
-                    anchor = hits[0].point.clone();
-                } else {
-                    const pt = new THREE.Vector3();
-                    const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-                    if(raycaster.ray.intersectPlane(ground, pt) && pt.distanceTo(camera.position) < 4000) {
-                        anchor = pt.clone();
-                    } else {
-                        const viewDir = camera.getWorldDirection(new THREE.Vector3());
-                        const facing = new THREE.Plane().setFromNormalAndCoplanarPoint(viewDir, viewTarget);
-                        if(raycaster.ray.intersectPlane(facing, pt)) anchor = pt.clone();
-                    }
-                }
-                if(!anchor) anchor = viewTarget.clone();
-
-                // 拡大縮小の倍率（距離に対する比）。近づきすぎ・離れすぎは止める
-                const dist = camera.position.distanceTo(viewTarget);
-                let factor = Math.exp(Math.max(-200, Math.min(200, e.deltaY)) * 0.0015);
-                const newDist = Math.max(MIN_DIST, Math.min(MAX_DIST, dist * factor));
-                factor = newDist / dist;
-                if(Math.abs(factor - 1) < 1e-4) return;
-
-                // 注目点とカメラを、ポインタの下の点に向かって（から）一緒に動かす → その点が画面上で動かない
-                camera.position.sub(anchor).multiplyScalar(factor).add(anchor);
-                viewTarget.sub(anchor).multiplyScalar(factor).add(anchor);
-                camera.lookAt(viewTarget);
+                camera.position.x = Math.max(-1500, Math.min(1500, camera.position.x));
+                camera.position.y = Math.max(-500, Math.min(1500, camera.position.y));
+                camera.position.z = Math.max(50, Math.min(2000, camera.position.z));
             }, { passive: false });
 
             renderAssemblyPalette();
             loadAssemblyScene();
             animate3D();
         }
-
-        function setStandardView(name) { if(viewApi) viewApi.setView(name); }
-        function rotateView(dThetaDeg, dPhiDeg) { if(viewApi) viewApi.rotateBy(dThetaDeg, dPhiDeg); }
-        function fitAllView() { if(viewApi) viewApi.fitAll(); }
 
         function renderAssemblyPalette() {
             const project = getCurrentProject();
@@ -1837,7 +1451,7 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
                 btn.innerHTML = `
                     <div>
                         <span class="text-xs font-bold text-amber-900 block">${part.name || '（名称未入力）'}</span>
-                        <span class="text-[10px] text-slate-500">${part.length} × ${part.width} × ${part.thickness}</span>
+                        <span class="text-[10px] text-slate-500">${part.length} × ${part.width} × ${part.thickness} mm</span>
                     </div>
                     <span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded font-bold">+ 配置</span>
                 `;
@@ -1923,7 +1537,7 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
             selectedMesh = mesh;
             if(selectedMesh && selectedMesh.material) {
                 selectedMesh.material.emissive.setHex(0x332211);
-                document.getElementById('current-selected-part-name').textContent = `選択中: ${selectedMesh.userData.name} (${selectedMesh.userData.length}×${selectedMesh.userData.width})`;
+                document.getElementById('current-selected-part-name').textContent = `選択中: ${selectedMesh.userData.name} (${selectedMesh.userData.length}×${selectedMesh.userData.width}mm)`;
             }
         }
 
@@ -1989,9 +1603,6 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
             if(!project) return;
 
             document.getElementById('pdf-modal-comment-display').textContent = project.comment || '（コメント未入力）';
-            document.getElementById('pdf-project-title').textContent = project.title || '';
-            renderOrthoPage(project);
-            updatePdfCreatedAt();
 
             const partsTbody = document.getElementById('pdf-modal-parts-tbody');
             partsTbody.innerHTML = '';
@@ -2028,7 +1639,7 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
 
                 if(board) {
                     slotEl.style.display = 'flex';
-                    descEl.textContent = `${board.name} (${board.length}×${board.width})`;
+                    descEl.textContent = `${board.name} (${board.length}×${board.width}mm)`;
                     setTimeout(() => { drawBoard(svgId, board); }, 50);
                 } else {
                     const svgEl = document.getElementById(svgId);
@@ -2079,383 +1690,42 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
                 isoScene.add(m);
             }
 
-            // 等角図を枠の中央に、できるだけ大きく収まるように自動調整する
-            isoScene.updateMatrixWorld(true);
-            const worldPts = [];
-            isoScene.traverse(o => {
-                if(!o.isMesh) return;
-                o.geometry.computeBoundingBox();
-                const bb = o.geometry.boundingBox;
-                for(const x of [bb.min.x, bb.max.x]) for(const y of [bb.min.y, bb.max.y]) for(const z of [bb.min.z, bb.max.z]) {
-                    worldPts.push(new THREE.Vector3(x, y, z).applyMatrix4(o.matrixWorld));
-                }
-            });
-            if(worldPts.length > 0) {
-                const box = new THREE.Box3().setFromPoints(worldPts);
-                const center = box.getCenter(new THREE.Vector3());
-                const dir = new THREE.Vector3(320, 280, 320).normalize();
-                const FILL = 0.94;   // 枠に対する最大の占有率
-
-                const measure = (dist) => {
-                    isoCamera.position.copy(center).addScaledVector(dir, dist);
-                    isoCamera.lookAt(center);
-                    isoCamera.updateMatrixWorld(true);
-                    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-                    worldPts.forEach(pt => {
-                        const n = pt.clone().project(isoCamera);
-                        minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x);
-                        minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y);
-                    });
-                    return { minX, maxX, minY, maxY };
-                };
-                // 全体が枠に収まる最小の距離を二分探索で求める
-                let lo = 1, hi = 50000;
-                for(let i = 0; i < 40; i++) {
-                    const mid = (lo + hi) / 2;
-                    const m = measure(mid);
-                    const hx = (m.maxX - m.minX) / 2, hy = (m.maxY - m.minY) / 2;
-                    if(hx <= FILL && hy <= FILL) hi = mid; else lo = mid;
-                }
-                const m = measure(hi);
-                // 図形の中心が枠の真ん中にくるよう、画面内で位置をずらす
-                const cx = (m.minX + m.maxX) / 2, cy = (m.minY + m.maxY) / 2;
-                isoCamera.near = Math.max(1, hi - box.getSize(new THREE.Vector3()).length());
-                isoCamera.far = hi + box.getSize(new THREE.Vector3()).length() * 2 + 1000;
-                isoCamera.setViewOffset(isoW, isoH, cx * isoW / 2, -cy * isoH / 2, isoW, isoH);
-                isoCamera.updateProjectionMatrix();
-            }
-
             isoRenderer.render(isoScene, isoCamera);
 
             document.getElementById('pdf-layout-modal').classList.remove('hidden');
-        }
-
-        // 作成日：画像にする時点の日付と時刻を表示
-        function updatePdfCreatedAt() {
-            const d = new Date();
-            const p = n => String(n).padStart(2, '0');
-            const text = `${d.getFullYear()}年${p(d.getMonth() + 1)}月${p(d.getDate())}日 ${p(d.getHours())}:${p(d.getMinutes())}`;
-            document.getElementById('pdf-created-at').textContent = text;
-            const el2 = document.getElementById('pdf-ortho-date');
-            if(el2) el2.textContent = text;
-        }
-
-        function scrollToPdfPage(n) {
-            const el = document.getElementById('pdf-sheet-' + n);
-            if(el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function closePdfLayoutModal() {
             document.getElementById('pdf-layout-modal').classList.add('hidden');
         }
 
-        async function downloadPdfLayout() {
+        function downloadPdfLayout() {
             const project = getCurrentProject();
-            const sheets = [document.getElementById('pdf-sheet-1'), document.getElementById('pdf-sheet-2')];
-            if(!sheets[0] || !sheets[1]) {
+            const sheet = document.querySelector('#pdf-preview-sheet > div');
+            if(!sheet) {
                 showAlert('プレビューシートが見つかりません。');
                 return;
             }
-            if(!window.jspdf || !window.jspdf.jsPDF) {
-                showAlert('PDF作成のライブラリを読み込めませんでした。インターネットに接続して、ページを開き直してください。');
-                return;
-            }
 
-            updatePdfCreatedAt();
             const projTitle = project ? project.title.replace(/[\/\\?%*:|"<>]/g, '_') : '木工製作図面';
+            const fileName = `${projTitle}_レイアウト図.jpg`;
 
-            try {
-                // 画面のレイアウト（1260×890）をそのまま、A4横の1ページに1枚ずつ入れる
-                const pageW = 297, pageH = 297 * 890 / 1260;   // mm（縦横比を画面と同じにする）
-                const pdf = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: [pageW, pageH] });
-                for(let i = 0; i < sheets.length; i++) {
-                    const canvas = await html2canvas(sheets[i], {
-                        scale: 2.5,
-                        useCORS: true,
-                        allowTaint: true,
-                        backgroundColor: '#ffffff'
-                    });
-                    if(i > 0) pdf.addPage([pageW, pageH], 'landscape');
-                    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pageW, pageH);
-                }
-                pdf.save(`${projTitle}_レイアウト図.pdf`);
-            } catch(err) {
-                console.error('PDF export error:', err);
-                showAlert('PDFの保存に失敗しました。');
-            }
-        }
-
-        // ============================================================
-        // 2ページ目：第三角法による正投影図（正面図・平面図・右側面図）
-        // ============================================================
-        const escHtml = (t) => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-
-        // 組み立てた部品1個ぶんの、軸に平行な直方体の範囲（回転はThree.jsと同じ XYZ 順）
-        function worldBoxFromPart(d) {
-            const rx = d.rotX || 0, ry = d.rotY || 0, rz = d.rotZ || 0;
-            const cx = Math.cos(rx), sx = Math.sin(rx), cy = Math.cos(ry), sy = Math.sin(ry), cz = Math.cos(rz), sz = Math.sin(rz);
-            const Rx = [[1, 0, 0], [0, cx, -sx], [0, sx, cx]];
-            const Ry = [[cy, 0, sy], [0, 1, 0], [-sy, 0, cy]];
-            const Rz = [[cz, -sz, 0], [sz, cz, 0], [0, 0, 1]];
-            const mul = (A, B) => A.map((row, i) => [0, 1, 2].map(j => row[0] * B[0][j] + row[1] * B[1][j] + row[2] * B[2][j]));
-            const R = mul(mul(Rx, Ry), Rz);
-            const hx = d.length / 2, hy = d.thickness / 2, hz = d.width / 2;
-            const mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
-            for(const a of [-hx, hx]) for(const b of [-hy, hy]) for(const c of [-hz, hz]) {
-                const v = [R[0][0] * a + R[0][1] * b + R[0][2] * c, R[1][0] * a + R[1][1] * b + R[1][2] * c, R[2][0] * a + R[2][1] * b + R[2][2] * c];
-                for(let k = 0; k < 3; k++) { mn[k] = Math.min(mn[k], v[k]); mx[k] = Math.max(mx[k], v[k]); }
-            }
-            const r2 = v => Math.round(v * 100) / 100;
-            return {
-                x0: r2(mn[0] + d.posX), x1: r2(mx[0] + d.posX),
-                y0: r2(mn[1] + d.posY), y1: r2(mx[1] + d.posY),
-                z0: r2(mn[2] + d.posZ), z1: r2(mx[2] + d.posZ)
-            };
-        }
-
-        // 見える線（実線）と隠れる線（破線）に分ける。d1 は見る人に近い側の面の位置
-        function orthoEdges(rects) {
-            const EPS = 1e-6;
-            const hidden = [], visible = [];
-            rects.forEach((B, bi) => {
-                // Bより手前にあって、投影が重なる部品
-                const occ = rects.filter((C, ci) => ci !== bi && C.d1 > B.d1 + EPS &&
-                    Math.min(B.u1, C.u1) - Math.max(B.u0, C.u0) > EPS &&
-                    Math.min(B.v1, C.v1) - Math.max(B.v0, C.v0) > EPS);
-                const edges = [
-                    { h: true,  c: B.v0, a: B.u0, b: B.u1 }, { h: true,  c: B.v1, a: B.u0, b: B.u1 },
-                    { h: false, c: B.u0, a: B.v0, b: B.v1 }, { h: false, c: B.u1, a: B.v0, b: B.v1 }
-                ];
-                edges.forEach(e => {
-                    const cuts = [];
-                    occ.forEach(C => {
-                        const lo = e.h ? C.v0 : C.u0, hi = e.h ? C.v1 : C.u1;
-                        if(e.c > lo + EPS && e.c < hi - EPS) {
-                            const a = Math.max(e.a, e.h ? C.u0 : C.v0), b = Math.min(e.b, e.h ? C.u1 : C.v1);
-                            if(b - a > EPS) cuts.push([a, b]);
-                        }
-                    });
-                    cuts.sort((p, q) => p[0] - q[0]);
-                    const merged = [];
-                    cuts.forEach(c => {
-                        const last = merged[merged.length - 1];
-                        if(last && c[0] <= last[1] + EPS) last[1] = Math.max(last[1], c[1]); else merged.push([c[0], c[1]]);
-                    });
-                    const push = (list, a, b) => { if(b - a > EPS) list.push(e.h ? [a, e.c, b, e.c] : [e.c, a, e.c, b]); };
-                    let cur = e.a;
-                    merged.forEach(m => { push(visible, cur, m[0]); push(hidden, m[0], m[1]); cur = m[1]; });
-                    push(visible, cur, e.b);
+            setTimeout(() => {
+                html2canvas(sheet, {
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff'
+                }).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = fileName;
+                    link.href = canvas.toDataURL('image/jpeg', 0.95);
+                    link.click();
+                }).catch(err => {
+                    console.error('JPEG export error:', err);
+                    showAlert('JPEG画像の保存に失敗しました。');
                 });
-            });
-            return { hidden, visible };
-        }
-
-        // JISの寸法記入法（寸法補助線・寸法線・矢印・数値）。数値どうしが重ならないように置く
-        function createDimTools(W, H) {
-            const INK = '#1f2937', ARW = 7, FS = 11;
-            const placed = [];
-            const seen = new Set();
-            let labels = '';
-            const hit = (cx, cy, rw, rh) => placed.some(r =>
-                cx - rw / 2 < r.x + r.w + 1.5 && cx + rw / 2 > r.x - 1.5 &&
-                cy - rh / 2 < r.y + r.h + 1.5 && cy + rh / 2 > r.y - 1.5);
-            const place = (cx, cy, rw, rh, axis, lo, hi, perp) => {
-                const fits = axis === 'x' ? (rw <= hi - lo) : (rh <= hi - lo);
-                const search = (m, constrained) => {
-                    const maxK = (fits || !constrained) ? 90 : 0;
-                    for(let k = 0; k <= maxK; k++) {
-                        for(const sg of (k === 0 ? [0] : [1, -1])) {
-                            const off = k * 4 * sg;
-                            let x = cx, y = cy;
-                            if(axis === 'x') { x += off; y += m; if(constrained && fits && (x - rw / 2 < lo - 0.5 || x + rw / 2 > hi + 0.5)) continue; }
-                            else { y += off; x += m; if(constrained && fits && (y - rh / 2 < lo - 0.5 || y + rh / 2 > hi + 0.5)) continue; }
-                            if(x - rw / 2 < 2 || x + rw / 2 > W - 2 || y - rh / 2 < 2 || y + rh / 2 > H - 2) continue;
-                            if(!hit(x, y, rw, rh)) return { x, y };
-                        }
-                    }
-                    return null;
-                };
-                let pos = null;
-                for(const m of [0, ...perp]) { pos = search(m, true); if(pos) break; }
-                if(!pos) { for(const m of [0, ...perp]) { pos = search(m, false); if(pos) break; } }
-                if(!pos) pos = { x: cx, y: cy };
-                placed.push({ x: pos.x - rw / 2, y: pos.y - rh / 2, w: rw, h: rh });
-                return pos;
-            };
-            const fmt = v => Math.round(v * 10) / 10;
-            const textW = (str) => String(str).length * 6.3 + 3;
-            const halo = `stroke="#ffffff" stroke-width="3" paint-order="stroke" stroke-linejoin="round"`;
-            const thin = (x1, y1, x2, y2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${INK}" stroke-width="0.7"/>`;
-            const exts = (list) => (list || []).map(e => thin(e[0], e[1], e[2], e[3])).join('');
-
-            return {
-                reserve(rect) { placed.push(rect); },
-                labelLayer() { return labels; },
-                // 横向きの寸法線（数値は線の上側）
-                dimH(y, xa, xb, value, ext, perp) {
-                    if(xb < xa) [xa, xb] = [xb, xa];
-                    if(xb - xa < 2) return '';
-                    const key = 'H|' + Math.round(y) + '|' + Math.round(xa * 2) + '|' + Math.round(xb * 2);
-                    if(seen.has(key)) return '';
-                    seen.add(key);
-                    const label = fmt(value), w = textW(label);
-                    const pos = place((xa + xb) / 2, y - 8, w, 12, 'x', xa, xb, perp || [-14, -28, 16]);
-                    labels += `<text x="${pos.x}" y="${pos.y + 4}" font-size="${FS}" fill="${INK}" text-anchor="middle" ${halo}>${label}</text>`;
-                    let g = exts(ext);
-                    if((xb - xa) >= 2 * ARW + 4) {
-                        g += `<line x1="${xa}" y1="${y}" x2="${xb}" y2="${y}" stroke="${INK}" stroke-width="0.9"/>`;
-                        g += `<polygon points="${xa},${y} ${xa + ARW},${y - 2} ${xa + ARW},${y + 2}" fill="${INK}"/>`;
-                        g += `<polygon points="${xb},${y} ${xb - ARW},${y - 2} ${xb - ARW},${y + 2}" fill="${INK}"/>`;
-                    } else {
-                        g += `<line x1="${xa - ARW - 2}" y1="${y}" x2="${xb + ARW + 2}" y2="${y}" stroke="${INK}" stroke-width="0.9"/>`;
-                        g += `<polygon points="${xa},${y} ${xa - ARW},${y - 2} ${xa - ARW},${y + 2}" fill="${INK}"/>`;
-                        g += `<polygon points="${xb},${y} ${xb + ARW},${y - 2} ${xb + ARW},${y + 2}" fill="${INK}"/>`;
-                    }
-                    return g;
-                },
-                // 縦向きの寸法線（数値は線の左側に、右側から読めるよう回して記入）
-                dimV(x, ya, yb, value, ext, perp) {
-                    if(yb < ya) [ya, yb] = [yb, ya];
-                    if(yb - ya < 2) return '';
-                    const key = 'V|' + Math.round(x) + '|' + Math.round(ya * 2) + '|' + Math.round(yb * 2);
-                    if(seen.has(key)) return '';
-                    seen.add(key);
-                    const label = fmt(value), w = textW(label);
-                    const pos = place(x - 8, (ya + yb) / 2, 12, w, 'y', ya, yb, perp || [-14, -28, 16]);
-                    labels += `<text transform="translate(${pos.x + 4},${pos.y}) rotate(-90)" font-size="${FS}" fill="${INK}" text-anchor="middle" ${halo}>${label}</text>`;
-                    let g = exts(ext);
-                    if((yb - ya) >= 2 * ARW + 4) {
-                        g += `<line x1="${x}" y1="${ya}" x2="${x}" y2="${yb}" stroke="${INK}" stroke-width="0.9"/>`;
-                        g += `<polygon points="${x},${ya} ${x - 2},${ya + ARW} ${x + 2},${ya + ARW}" fill="${INK}"/>`;
-                        g += `<polygon points="${x},${yb} ${x - 2},${yb - ARW} ${x + 2},${yb - ARW}" fill="${INK}"/>`;
-                    } else {
-                        g += `<line x1="${x}" y1="${ya - ARW - 2}" x2="${x}" y2="${yb + ARW + 2}" stroke="${INK}" stroke-width="0.9"/>`;
-                        g += `<polygon points="${x},${ya} ${x - 2},${ya - ARW} ${x + 2},${ya - ARW}" fill="${INK}"/>`;
-                        g += `<polygon points="${x},${yb} ${x - 2},${yb + ARW} ${x + 2},${yb + ARW}" fill="${INK}"/>`;
-                    }
-                    return g;
-                }
-            };
-        }
-
-        function renderOrthoPage(project) {
-            const svg = document.getElementById('pdf-ortho-svg');
-            if(!svg) return;
-            const W = 1260, H = 890, INK = '#1f2937';
-
-            let out = '';
-            out += `<rect x="0" y="0" width="${W}" height="${H}" fill="#ffffff"/>`;
-            out += `<text x="24" y="38" font-size="24" font-weight="bold" fill="${INK}">${escHtml(project.title || '')}</text>`;
-            out += `<line x1="20" y1="50" x2="${W - 20}" y2="50" stroke="${INK}" stroke-width="2"/>`;
-            out += `<text x="24" y="76" font-size="16" font-weight="bold" fill="${INK}">第三角法による正投影図</text>`;
-
-            // 下の欄：作成日・名前・単位
-            const footer = () => `
-                <line x1="20" y1="852" x2="${W - 20}" y2="852" stroke="${INK}" stroke-width="1"/>
-                <text x="24" y="876" font-size="13" font-weight="bold" fill="${INK}">作成日: <tspan id="pdf-ortho-date" font-weight="normal">____年__月__日 __:__</tspan></text>
-                <text x="760" y="876" font-size="13" font-weight="bold" fill="${INK}">名前:</text>
-                <rect x="805" y="858" width="235" height="28" fill="none" stroke="${INK}" stroke-width="1"/>
-                <text x="${W - 24}" y="876" font-size="13" fill="${INK}" text-anchor="end">単位：mm　／　第三角法</text>`;
-
-            const parts = project.assemblyParts || [];
-            if(parts.length === 0) {
-                out += `<text x="${W / 2}" y="${H / 2}" font-size="18" fill="#64748b" text-anchor="middle">3D組立の画面で部品を配置すると、ここに正投影図が表示されます。</text>`;
-                svg.innerHTML = out + footer();
-                updatePdfCreatedAt();
-                return;
-            }
-
-            const boxes = parts.map(worldBoxFromPart);
-            const ext = {
-                x0: Math.min(...boxes.map(b => b.x0)), x1: Math.max(...boxes.map(b => b.x1)),
-                y0: Math.min(...boxes.map(b => b.y0)), y1: Math.max(...boxes.map(b => b.y1)),
-                z0: Math.min(...boxes.map(b => b.z0)), z1: Math.max(...boxes.map(b => b.z1))
-            };
-            const Wx = ext.x1 - ext.x0, Hy = ext.y1 - ext.y0, Dz = ext.z1 - ext.z0;
-
-            // 各図の「横u・縦v・見る人に近い向きd」
-            const rectsOf = {
-                front: boxes.map(b => ({ u0: b.x0, u1: b.x1, v0: b.y0, v1: b.y1, d1: b.z1 })),      // 正面（+Z側から見る）
-                top:   boxes.map(b => ({ u0: b.x0, u1: b.x1, v0: -b.z1, v1: -b.z0, d1: b.y1 })),    // 平面（上から見る。手前が下）
-                right: boxes.map(b => ({ u0: -b.z1, u1: -b.z0, v0: b.y0, v1: b.y1, d1: b.x1 }))     // 右側面（+X側から見る。手前が左）
-            };
-
-            // 配置と拡大率（枠に収まる範囲でできるだけ大きく）
-            const M_L = 108, gapX = 64, gapY = 56, M_B = 96;
-            const xA0 = 30 + M_L, xA1 = W - 30;
-            const yA0 = 84 + 28, yA1 = 846 - M_B;
-            const s = Math.min((xA1 - xA0 - gapX) / (Wx + Dz), (yA1 - yA0 - gapY) / (Hy + Dz), 10);
-            const Wd = Wx * s + gapX + Dz * s, Hd = Dz * s + gapY + Hy * s;
-            const fx0 = xA0 + (xA1 - xA0 - Wd) / 2;
-            const ty0 = yA0 + (yA1 - yA0 - Hd) / 2;
-            const fyTop = ty0 + Dz * s + gapY, fyBottom = fyTop + Hy * s;
-            const rx0 = fx0 + Wx * s + gapX;
-
-            // 図形の座標 → 画面の座標
-            const toX = (ox, umin) => (u) => ox + (u - umin) * s;
-            const toY = (oyBottom, vmin) => (v) => oyBottom - (v - vmin) * s;
-            const views = [
-                { key: 'front', name: '正面図',   mx: toX(fx0, ext.x0),  my: toY(fyBottom, ext.y0),       lx: fx0, ly: fyTop - 10 },
-                { key: 'top',   name: '平面図',   mx: toX(fx0, ext.x0),  my: toY(ty0 + Dz * s, -ext.z1),  lx: fx0, ly: ty0 - 8 },
-                { key: 'right', name: '右側面図', mx: toX(rx0, -ext.z1), my: toY(fyBottom, ext.y0),       lx: rx0, ly: fyTop - 10 }
-            ];
-
-            // 隠れ線（破線）→ 外形線（実線）の順に描く
-            let hiddenSvg = '', visibleSvg = '', nameSvg = '';
-            views.forEach(v => {
-                const e = orthoEdges(rectsOf[v.key]);
-                e.hidden.forEach(l => { hiddenSvg += `<line x1="${v.mx(l[0])}" y1="${v.my(l[1])}" x2="${v.mx(l[2])}" y2="${v.my(l[3])}" stroke="${INK}" stroke-width="1" stroke-dasharray="6,3.5"/>`; });
-                e.visible.forEach(l => { visibleSvg += `<line x1="${v.mx(l[0])}" y1="${v.my(l[1])}" x2="${v.mx(l[2])}" y2="${v.my(l[3])}" stroke="${INK}" stroke-width="1.9" stroke-linecap="round"/>`; });
-                nameSvg += `<text x="${v.lx}" y="${v.ly}" font-size="13" font-weight="bold" fill="${INK}">${v.name}</text>`;
-            });
-
-            // 寸法：連続寸法（部品の端どうしの間隔）と、全体の寸法
-            const tools = createDimTools(W, H);
-            const uniq = (arr) => { const a = arr.slice().sort((p, q) => p - q), r = []; a.forEach(v => { if(r.length === 0 || Math.abs(v - r[r.length - 1]) > 0.005) r.push(v); }); return r; };
-            const xs = uniq(boxes.flatMap(b => [b.x0, b.x1]));
-            const ys = uniq(boxes.flatMap(b => [b.y0, b.y1]));
-            const zs = uniq(boxes.flatMap(b => [b.z0, b.z1]));
-
-            let dimSvg = '';
-            const laneB1 = fyBottom + 30, laneB2 = fyBottom + 66;
-            const perpBelow = [16, 32, -14];
-
-            // 幅（X）：正面図の下
-            const fX = views[0].mx;
-            for(let i = 0; i < xs.length - 1; i++) {
-                dimSvg += tools.dimH(laneB1, fX(xs[i]), fX(xs[i + 1]), xs[i + 1] - xs[i],
-                    [[fX(xs[i]), fyBottom + 3, fX(xs[i]), laneB1 + 4], [fX(xs[i + 1]), fyBottom + 3, fX(xs[i + 1]), laneB1 + 4]], perpBelow);
-            }
-            if(xs.length > 2) {
-                dimSvg += tools.dimH(laneB2, fX(xs[0]), fX(xs[xs.length - 1]), Wx,
-                    [[fX(xs[0]), fyBottom + 3, fX(xs[0]), laneB2 + 4], [fX(xs[xs.length - 1]), fyBottom + 3, fX(xs[xs.length - 1]), laneB2 + 4]], perpBelow);
-            }
-
-            // 奥行き（Z）：右側面図の下（右側面図は手前が左）
-            const rX = (z) => views[2].mx(-z);
-            for(let i = 0; i < zs.length - 1; i++) {
-                dimSvg += tools.dimH(laneB1, rX(zs[i]), rX(zs[i + 1]), zs[i + 1] - zs[i],
-                    [[rX(zs[i]), fyBottom + 3, rX(zs[i]), laneB1 + 4], [rX(zs[i + 1]), fyBottom + 3, rX(zs[i + 1]), laneB1 + 4]], perpBelow);
-            }
-            if(zs.length > 2) {
-                dimSvg += tools.dimH(laneB2, rX(zs[0]), rX(zs[zs.length - 1]), Dz,
-                    [[rX(zs[0]), fyBottom + 3, rX(zs[0]), laneB2 + 4], [rX(zs[zs.length - 1]), fyBottom + 3, rX(zs[zs.length - 1]), laneB2 + 4]], perpBelow);
-            }
-
-            // 高さ（Y）：正面図の左
-            const fY = views[0].my;
-            const laneL1 = fx0 - 36, laneL2 = fx0 - 74;
-            for(let i = 0; i < ys.length - 1; i++) {
-                dimSvg += tools.dimV(laneL1, fY(ys[i]), fY(ys[i + 1]), ys[i + 1] - ys[i],
-                    [[fx0 - 3, fY(ys[i]), laneL1 - 4, fY(ys[i])], [fx0 - 3, fY(ys[i + 1]), laneL1 - 4, fY(ys[i + 1])]], [-14, 16]);
-            }
-            if(ys.length > 2) {
-                dimSvg += tools.dimV(laneL2, fY(ys[0]), fY(ys[ys.length - 1]), Hy,
-                    [[fx0 - 3, fY(ys[0]), laneL2 - 4, fY(ys[0])], [fx0 - 3, fY(ys[ys.length - 1]), laneL2 - 4, fY(ys[ys.length - 1])]], [-14, 16]);
-            }
-
-            svg.innerHTML = out + hiddenSvg + visibleSvg + dimSvg + tools.labelLayer() + nameSvg + footer();
-            updatePdfCreatedAt();
+            }, 100);
         }
     </script>
 </body>
