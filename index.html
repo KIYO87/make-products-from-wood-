@@ -1909,6 +1909,18 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
             const project = getCurrentProject();
             if(!project) return;
 
+            // 部品の端がmmの整数位置にそろうよう、位置を最大0.5mmだけ補正する（寸法に0.5が出ないように）
+            assembledMeshes.forEach(mesh => {
+                const b = worldBoxFromPart({
+                    length: mesh.userData.length, width: mesh.userData.width, thickness: mesh.userData.thickness,
+                    posX: mesh.position.x, posY: mesh.position.y, posZ: mesh.position.z,
+                    rotX: mesh.rotation.x, rotY: mesh.rotation.y, rotZ: mesh.rotation.z
+                });
+                mesh.position.x += Math.round(b.x0) - b.x0;
+                mesh.position.y += Math.round(b.y0) - b.y0;
+                mesh.position.z += Math.round(b.z0) - b.z0;
+            });
+
             project.assemblyParts = assembledMeshes.map(mesh => ({
                 length: mesh.userData.length,
                 width: mesh.userData.width,
@@ -2455,7 +2467,11 @@ let viewApi = null;   // 3D画面の視点操作（ボタンから呼ぶ）
                 return;
             }
 
-            const boxes = parts.map(worldBoxFromPart);
+            const boxes = parts.map(worldBoxFromPart).map(b => {
+                // 以前に保存したデータでも、端を1mm単位にそろえる
+                const sx = Math.round(b.x0) - b.x0, sy = Math.round(b.y0) - b.y0, sz = Math.round(b.z0) - b.z0;
+                return { x0: b.x0 + sx, x1: b.x1 + sx, y0: b.y0 + sy, y1: b.y1 + sy, z0: b.z0 + sz, z1: b.z1 + sz };
+            });
             const ext = {
                 x0: Math.min(...boxes.map(b => b.x0)), x1: Math.max(...boxes.map(b => b.x1)),
                 y0: Math.min(...boxes.map(b => b.y0)), y1: Math.max(...boxes.map(b => b.y1)),
